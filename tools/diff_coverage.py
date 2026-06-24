@@ -36,7 +36,7 @@ def handle_diff_coverage(
     # Get changed files via git diff
     try:
         result = subprocess.run(
-            ["git", "diff", "--name-only", base_ref],
+            ["git", "diff", "--name-only", f"{base_ref}...HEAD"],
             capture_output=True, text=True, cwd=str(repo),
             timeout=30,
         )

@@ -377,6 +377,7 @@ Shared utils:    app/src/testFixtures/java
     def validate_generated_test(
         self,
         test_content: str,
+        test_file_path: str,
         source_classification: SourceClassification,
     ) -> Dict:
         violations: List[Dict] = []
@@ -587,28 +588,27 @@ Shared utils:    app/src/testFixtures/java
                 })
 
         # --- Test placement validation ---
-        placement_rules = {
-            "unit": "app/src/test/java",
-            "integration": "app/src/test/java",
-            "contract": "app/src/androidTest/java",
-            "e2e": "app/src/androidTest/java",
-            "performance": "macrobenchmark/src/androidTest/java",
-        }
-        # If we can detect the file path from the package declaration
-        package_match = re.search(r'package\s+([\w.]+)', test_content)
-        if package_match:
-            # Check if the test uses Lane 3 patterns but sits in test/ (not androidTest/)
-            is_lane3_test = bool(re.search(r'createAndroidComposeRule|@HiltAndroidTest|MockWebServer', test_content))
-            is_lane1_test = source_classification.class_type in ("viewmodel", "use_case", "reducer", "validator", "dto_mapper")
-            # Note: full path validation requires the file_path argument which
-            # validate_generated_test doesn't receive. We flag via heuristic.
-            if is_lane3_test and is_lane1_test:
-                violations.append({
-                    "rule": "test_placement_mismatch",
-                    "severity": "error",
-                    "line": 0,
-                    "detail": "Test uses Lane 3 constructs (createAndroidComposeRule/Hilt/MockWebServer) but source is classified as Lane 1 type. Place in app/src/androidTest/java.",
-                })
+        is_lane3_test = bool(re.search(r'createAndroidComposeRule|@HiltAndroidTest|MockWebServer', test_content))
+        is_lane1_test = source_classification.class_type in ("viewmodel", "use_case", "reducer", "validator", "dto_mapper")
+        
+        path_normalized = test_file_path.replace("\\", "/")
+        in_android_test = "androidTest" in path_normalized
+        in_test = "src/test/" in path_normalized
+
+        if is_lane3_test and not in_android_test:
+            violations.append({
+                "rule": "test_placement_mismatch",
+                "severity": "error",
+                "line": 0,
+                "detail": f"Test uses Lane 3 constructs (createAndroidComposeRule/Hilt/MockWebServer) but is not in androidTest. Found at: {test_file_path}",
+            })
+        elif is_lane1_test and not is_lane3_test and in_android_test:
+            violations.append({
+                "rule": "test_placement_mismatch",
+                "severity": "error",
+                "line": 0,
+                "detail": f"Source is classified as Lane 1 type, but test is placed in androidTest directory. Found at: {test_file_path}",
+            })
 
         # --- Determine lane coverage ---
         if re.search(r'createComposeRule\s*\(', test_content):

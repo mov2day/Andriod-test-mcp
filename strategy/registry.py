@@ -34,9 +34,16 @@ class StrategyRegistry:
     """Discovers, loads, and validates strategy plug-ins."""
 
     def __init__(self, manifest_path: str | Path | None = None) -> None:
+        import os
         if manifest_path is None:
-            # Default: strategies.yaml next to the project root
-            manifest_path = Path(__file__).resolve().parent.parent / "strategies.yaml"
+            env_path = os.environ.get("QE_MCP_STRATEGIES_PATH")
+            if env_path:
+                manifest_path = Path(env_path)
+            elif Path("strategies.yaml").exists():
+                manifest_path = Path("strategies.yaml").resolve()
+            else:
+                # Default: strategies.yaml next to the project root
+                manifest_path = Path(__file__).resolve().parent.parent / "strategies.yaml"
         self._manifest_path = Path(manifest_path)
         self._manifest: Dict[str, Any] = self._read_manifest()
         self._strategies: Dict[str, BaseStrategy] = {}

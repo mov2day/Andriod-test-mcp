@@ -152,6 +152,7 @@ class BaseStrategy(ABC):
     def validate_generated_test(
         self,
         test_content: str,
+        test_file_path: str,
         source_classification: SourceClassification,
     ) -> Dict[str, Any]:
         """Validate that generated test content meets strategy rules.

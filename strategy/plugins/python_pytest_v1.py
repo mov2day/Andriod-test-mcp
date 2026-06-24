@@ -209,6 +209,7 @@ class PythonPytestStrategy(BaseStrategy):
     def validate_generated_test(
         self,
         test_content: str,
+        test_file_path: str,
         source_classification: SourceClassification,
     ) -> Dict:
         violations: List[Dict] = []

@@ -133,7 +133,7 @@ def handle_validate_tests(
 
     # ── Strategy-specific validation ─────────────────────────────
     try:
-        strategy_result = strategy.validate_generated_test(test_content, source_classification)
+        strategy_result = strategy.validate_generated_test(test_content, test_file, source_classification)
     except Exception as e:
         logger.error(f"Strategy validation failed: {e}")
         strategy_result = {
