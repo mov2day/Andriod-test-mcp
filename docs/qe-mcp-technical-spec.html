@@ -1,0 +1,2101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QE-MCP — Technical Specification</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --bg-primary:    #0B0E14;
+    --bg-secondary:  #111520;
+    --bg-card:       #161B27;
+    --bg-code:       #0D1117;
+    --border:        #1E2535;
+    --border-accent: #2A3550;
+    --text-primary:  #E4EAF4;
+    --text-secondary:#7E8DA8;
+    --text-muted:    #4A5568;
+    --accent-green:  #00C896;
+    --accent-blue:   #4B9EFF;
+    --accent-amber:  #F5A623;
+    --accent-red:    #FF5370;
+    --accent-purple: #B39DDB;
+    --lane1: #4B9EFF;
+    --lane2: #00C896;
+    --lane3: #F5A623;
+    --lane4: #B39DDB;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* ── Layout ── */
+  .layout { display: flex; min-height: 100vh; }
+
+  nav {
+    width: 260px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    padding: 28px 0;
+  }
+
+  nav::-webkit-scrollbar { width: 4px; }
+  nav::-webkit-scrollbar-track { background: transparent; }
+  nav::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 2px; }
+
+  .nav-logo {
+    padding: 0 24px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+
+  .nav-logo .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-green);
+    letter-spacing: 0.08em;
+  }
+
+  .nav-logo .logo-badge::before {
+    content: '';
+    width: 8px; height: 8px;
+    background: var(--accent-green);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent-green);
+    flex-shrink: 0;
+  }
+
+  .nav-subtitle {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 4px;
+    padding-left: 16px;
+  }
+
+  .nav-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 14px 24px 6px;
+  }
+
+  nav a {
+    display: block;
+    padding: 7px 24px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 400;
+    transition: color 0.15s, background 0.15s;
+    border-left: 2px solid transparent;
+  }
+
+  nav a:hover {
+    color: var(--text-primary);
+    background: rgba(75,158,255,0.06);
+    border-left-color: var(--accent-blue);
+  }
+
+  nav a.active {
+    color: var(--accent-green);
+    border-left-color: var(--accent-green);
+  }
+
+  main {
+    flex: 1;
+    min-width: 0;
+    padding: 60px 72px;
+    max-width: 960px;
+  }
+
+  /* ── Header ── */
+  .doc-header {
+    margin-bottom: 56px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .doc-header .tag-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .tag-version { background: rgba(0,200,150,0.12); color: var(--accent-green); border: 1px solid rgba(0,200,150,0.25); }
+  .tag-lang    { background: rgba(75,158,255,0.12); color: var(--accent-blue); border: 1px solid rgba(75,158,255,0.25); }
+  .tag-status  { background: rgba(245,166,35,0.12); color: var(--accent-amber); border: 1px solid rgba(245,166,35,0.25); }
+
+  .doc-header h1 {
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+  }
+
+  .doc-header h1 span { color: var(--accent-green); }
+
+  .doc-header .subtitle {
+    font-size: 16px;
+    color: var(--text-secondary);
+    max-width: 620px;
+    font-weight: 400;
+  }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  .meta-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .meta-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .meta-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  /* ── Section ── */
+  section { margin-bottom: 64px; scroll-margin-top: 24px; }
+
+  section h2 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  section h2 .section-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent-green);
+    font-weight: 600;
+    min-width: 28px;
+  }
+
+  section h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 28px 0 12px;
+    letter-spacing: -0.01em;
+  }
+
+  section h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-blue);
+    margin: 20px 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  p {
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+  }
+
+  strong { color: var(--text-primary); font-weight: 600; }
+
+  /* ── Code ── */
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    overflow-x: auto;
+    margin: 16px 0;
+    position: relative;
+  }
+
+  pre::before {
+    content: attr(data-lang);
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #ABB2BF;
+  }
+
+  .kw  { color: #C678DD; }
+  .fn  { color: #61AFEF; }
+  .str { color: #98C379; }
+  .cm  { color: #5C6370; font-style: italic; }
+  .tp  { color: #E5C07B; }
+  .num { color: #D19A66; }
+  .dc  { color: #E06C75; }
+  .op  { color: #56B6C2; }
+
+  code.inline {
+    background: rgba(75,158,255,0.1);
+    color: var(--accent-blue);
+    border: 1px solid rgba(75,158,255,0.2);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12px;
+  }
+
+  /* ── Flow diagram ── */
+  .flow {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 8px;
+    flex-wrap: nowrap;
+    min-width: max-content;
+  }
+
+  .flow-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .flow-box {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+    text-align: center;
+  }
+
+  .flow-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .fb-green  { background: rgba(0,200,150,0.12); color: var(--accent-green); border: 1px solid rgba(0,200,150,0.3); }
+  .fb-blue   { background: rgba(75,158,255,0.12); color: var(--accent-blue); border: 1px solid rgba(75,158,255,0.3); }
+  .fb-amber  { background: rgba(245,166,35,0.12); color: var(--accent-amber); border: 1px solid rgba(245,166,35,0.3); }
+  .fb-red    { background: rgba(255,83,112,0.12); color: var(--accent-red); border: 1px solid rgba(255,83,112,0.3); }
+  .fb-purple { background: rgba(179,157,219,0.12); color: var(--accent-purple); border: 1px solid rgba(179,157,219,0.3); }
+  .fb-grey   { background: rgba(126,141,168,0.1); color: var(--text-secondary); border: 1px solid var(--border); }
+
+  .flow-arrow {
+    color: var(--text-muted);
+    font-size: 18px;
+    padding: 0 6px;
+    padding-top: 0;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    align-self: flex-start;
+    margin-top: 14px;
+  }
+
+  .flow-down-arrow {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 16px;
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .flow-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+
+  .flow-divider {
+    border: none;
+    border-top: 1px dashed var(--border-accent);
+    margin: 20px 0;
+  }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; margin: 16px 0; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead th {
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    vertical-align: top;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+  td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-primary); }
+  td.highlight { color: var(--text-primary); font-weight: 500; }
+
+  /* ── Cards ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin: 20px 0;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .card-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .card ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .card ul li {
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .card ul li:last-child { border-bottom: none; }
+
+  .card ul li::before {
+    content: '–';
+    color: var(--text-muted);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── Plugin registry visual ── */
+  .plugin-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 20px 0;
+  }
+
+  .plugin-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .plugin-card.bundled { border-top: 2px solid var(--accent-green); }
+  .plugin-card.planned { border-top: 2px solid var(--accent-blue); opacity: 0.7; }
+  .plugin-card.community { border-top: 2px solid var(--accent-purple); opacity: 0.6; }
+
+  .plugin-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .plugin-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .plugin-tag {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+  }
+
+  .pt-bundled  { background: rgba(0,200,150,0.15); color: var(--accent-green); }
+  .pt-planned  { background: rgba(75,158,255,0.15); color: var(--accent-blue); }
+  .pt-community{ background: rgba(179,157,219,0.15); color: var(--accent-purple); }
+
+  /* ── Callouts ── */
+  .callout {
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    border-left: 3px solid;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+  .callout-body strong { display: block; margin-bottom: 4px; }
+
+  .callout-warn  { background: rgba(245,166,35,0.07); border-color: var(--accent-amber); }
+  .callout-risk  { background: rgba(255,83,112,0.07);  border-color: var(--accent-red); }
+  .callout-info  { background: rgba(75,158,255,0.07);  border-color: var(--accent-blue); }
+  .callout-ok    { background: rgba(0,200,150,0.07);   border-color: var(--accent-green); }
+
+  /* ── Directory tree ── */
+  .tree {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.9;
+    overflow-x: auto;
+  }
+
+  .tree .dir  { color: var(--accent-blue); font-weight: 500; }
+  .tree .file { color: #ABB2BF; }
+  .tree .note { color: var(--text-muted); font-style: italic; }
+  .tree .hl   { color: var(--accent-green); font-weight: 600; }
+
+  /* ── Scope table ── */
+  .scope-in  { color: var(--accent-green); font-weight: 600; }
+  .scope-out { color: var(--accent-red); }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .badge-sev-error   { background: rgba(255,83,112,0.15); color: var(--accent-red);    border: 1px solid rgba(255,83,112,0.3); }
+  .badge-sev-warn    { background: rgba(245,166,35,0.15); color: var(--accent-amber);  border: 1px solid rgba(245,166,35,0.3); }
+  .badge-sev-info    { background: rgba(75,158,255,0.15); color: var(--accent-blue);   border: 1px solid rgba(75,158,255,0.3); }
+  .badge-v1          { background: rgba(0,200,150,0.15);  color: var(--accent-green);  border: 1px solid rgba(0,200,150,0.3); }
+
+  /* ── Logging levels visual ── */
+  .log-levels {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 16px 0;
+  }
+
+  .log-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  .log-level {
+    min-width: 60px;
+    text-align: center;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+
+  .ll-debug   { background: rgba(126,141,168,0.15); color: var(--text-secondary); }
+  .ll-info    { background: rgba(0,200,150,0.15);   color: var(--accent-green); }
+  .ll-warning { background: rgba(245,166,35,0.15);  color: var(--accent-amber); }
+  .ll-error   { background: rgba(255,83,112,0.15);  color: var(--accent-red); }
+  .ll-critical{ background: rgba(255,83,112,0.3);   color: #FF8A9B; font-weight: 700; }
+
+  .log-msg { color: #ABB2BF; flex: 1; }
+
+  /* ── Timeline / sprint ── */
+  .sprint-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin: 20px 0;
+  }
+
+  .sprint-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .sprint-header {
+    padding: 12px 18px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .sprint-body {
+    padding: 14px 18px;
+  }
+
+  .sprint-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sprint-item:last-child { border-bottom: none; }
+
+  .sprint-check {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1.5px solid var(--border-accent);
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+  }
+
+  .check-done { background: var(--accent-green); border-color: var(--accent-green); color: #000; }
+  .check-scope { background: rgba(75,158,255,0.2); border-color: var(--accent-blue); }
+
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    nav { width: 100%; height: auto; position: relative; }
+    main { padding: 32px 24px; }
+    .meta-grid { grid-template-columns: repeat(2, 1fr); }
+    .card-grid { grid-template-columns: 1fr; }
+    .plugin-grid { grid-template-columns: repeat(2, 1fr); }
+    .sprint-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ── Sidebar ── -->
+<nav>
+  <div class="nav-logo">
+    <div class="logo-badge">QE-MCP</div>
+    <div class="nav-subtitle">Technical Specification · v1.0</div>
+  </div>
+
+  <div class="nav-section-label">Overview</div>
+  <a href="#overview">1. System Overview</a>
+  <a href="#design-principles">2. Design Principles</a>
+
+  <div class="nav-section-label">Architecture</div>
+  <a href="#architecture">3. Component Architecture</a>
+  <a href="#strategy-contract">4. Strategy Contract</a>
+  <a href="#strategy-registry">5. Strategy Registry</a>
+  <a href="#plugin-system">6. Plugin System</a>
+
+  <div class="nav-section-label">Full Flow</div>
+  <a href="#full-flow">7. End-to-End Flow</a>
+  <a href="#tool-surface">8. MCP Tool Surface</a>
+  <a href="#repo-analysis">9. Repo Analysis Flow</a>
+  <a href="#test-plan">10. Test Plan Flow</a>
+  <a href="#validation">11. Validation Flow</a>
+  <a href="#enforcement">12. Enforcement Gate</a>
+
+  <div class="nav-section-label">Infrastructure</div>
+  <a href="#reporting">13. Reporting</a>
+  <a href="#logging">14. Logging</a>
+  <a href="#project-structure">15. Project Structure</a>
+  <a href="#v1-scope">16. V1 Scope</a>
+  <a href="#extension-points">17. Extension Points</a>
+</nav>
+
+<!-- ── Main ── -->
+<main>
+
+<!-- Header -->
+<div class="doc-header">
+  <div class="tag-row">
+    <span class="tag tag-version">v1.0-draft</span>
+    <span class="tag tag-lang">Python · MCP</span>
+    <span class="tag tag-status">In Design</span>
+  </div>
+  <h1>QE-<span>MCP</span><br>Technical Specification</h1>
+  <p class="subtitle">A Python-based Model Context Protocol server that enforces configurable QA automation strategies — enabling AI agents to analyse repositories, generate prescriptive test plans, validate test output, and enforce quality gates through a plug-and-play strategy plugin architecture.</p>
+
+  <div class="meta-grid">
+    <div class="meta-item">
+      <div class="meta-label">Runtime</div>
+      <div class="meta-value">Python 3.11+</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Protocol</div>
+      <div class="meta-value">MCP (stdio)</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">V1 Tools</div>
+      <div class="meta-value">8 tools</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Strategy API</div>
+      <div class="meta-value">BaseStrategy ABC</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 1. OVERVIEW ── -->
+<section id="overview">
+  <h2><span class="section-num">01</span>System Overview</h2>
+  <p>QE-MCP is an MCP server written in Python that acts as a <strong>QA strategy enforcement layer</strong> for AI coding agents. It does not call LLMs itself. It loads a strategy, analyses source code deterministically, assembles a prescriptive test plan, and returns structured briefs that the calling agent uses to generate tests.</p>
+  <p>The central design insight: <strong>strategy and enforcement are separate concerns from generation</strong>. The MCP owns the rules, the structure, and the quality gate. The AI agent owns the generation. This separation prevents strategy drift and makes every generated test traceable to a declared rule.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title" style="color: var(--accent-green);">
+        <span class="dot" style="background: var(--accent-green);"></span>What QE-MCP Does
+      </div>
+      <ul>
+        <li>Loads and validates strategy plugins at runtime</li>
+        <li>Discovers source files and classifies them by type</li>
+        <li>Produces prescriptive TC-001..N test plans</li>
+        <li>Validates generated tests against declared strategy rules</li>
+        <li>Enforces coverage thresholds via a hard gate tool</li>
+        <li>Emits structured JSON reports and structured logs</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color: var(--accent-red);">
+        <span class="dot" style="background: var(--accent-red);"></span>What QE-MCP Does NOT Do
+      </div>
+      <ul>
+        <li>Call any LLM or AI API directly</li>
+        <li>Execute test suites or run a test runner</li>
+        <li>Parse import graphs or build dependency trees (V1)</li>
+        <li>Perform semantic understanding of business logic</li>
+        <li>Store state between MCP server restarts</li>
+        <li>Replace human oracle judgement on expected behavior</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ── 2. DESIGN PRINCIPLES ── -->
+<section id="design-principles">
+  <h2><span class="section-num">02</span>Design Principles</h2>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title" style="color: var(--accent-blue);">
+        <span class="dot" style="background: var(--accent-blue);"></span>Principle 1 — Strategy Owns the Rules
+      </div>
+      <ul>
+        <li>No QA logic is hardcoded in the MCP server core</li>
+        <li>Every classification, oracle rule, and naming convention lives in the strategy plugin</li>
+        <li>Swapping strategy = swapping all QA knowledge</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color: var(--accent-amber);">
+        <span class="dot" style="background: var(--accent-amber);"></span>Principle 2 — Fail Loudly on Bad Contract
+      </div>
+      <ul>
+        <li>A strategy missing any abstract method raises <code class="inline">StrategyLoadError</code> at load time</li>
+        <li>A tool receiving an invalid strategy ID returns a structured error, never a silent no-op</li>
+        <li>All violations have a severity: <code class="inline">error</code> blocks; <code class="inline">warning</code> is advisory</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color: var(--accent-purple);">
+        <span class="dot" style="background: var(--accent-purple);"></span>Principle 3 — Deterministic Analysis
+      </div>
+      <ul>
+        <li>Repo analysis uses only Python <code class="inline">ast</code> and <code class="inline">pathlib</code> — no LLM calls</li>
+        <li>Same repo + same strategy = same output, always</li>
+        <li><code class="inline">classify_source_file()</code> must be pure and synchronous; enforced via timeout wrapper</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color: var(--accent-green);">
+        <span class="dot" style="background: var(--accent-green);"></span>Principle 4 — Structured Over Narrative
+      </div>
+      <ul>
+        <li>Every tool returns typed, structured JSON — not prose</li>
+        <li>Reports have a defined schema enforced by Pydantic</li>
+        <li>Logs use structured format: JSON in CI, readable in dev</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ── 3. COMPONENT ARCHITECTURE ── -->
+<section id="architecture">
+  <h2><span class="section-num">03</span>Component Architecture</h2>
+
+  <div class="flow">
+    <div class="flow-section-label">Entry Points</div>
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="flow-box fb-grey">Claude Code / Cursor / Windsurf / Any Agent IDE</div>
+        <div class="flow-label">MCP Client (agent IDE)</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-green">server.py</div>
+        <div class="flow-label">MCP Server (stdio)</div>
+      </div>
+    </div>
+
+    <hr class="flow-divider" />
+    <div class="flow-section-label">Core Dispatch</div>
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="flow-box fb-green">server.py</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-blue">ToolRouter</div>
+        <div class="flow-label">tools/router.py</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-amber">StrategyRegistry</div>
+        <div class="flow-label">strategy/registry.py</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-purple">BaseStrategy Plugin</div>
+        <div class="flow-label">strategy/plugins/*.py</div>
+      </div>
+    </div>
+
+    <hr class="flow-divider" />
+    <div class="flow-section-label">Tool Implementations (each calls strategy + core)</div>
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="flow-box fb-blue">analyse.py</div>
+        <div class="flow-label">Repo scanner</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-blue">plan.py</div>
+        <div class="flow-label">Test planner</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-blue">validate.py</div>
+        <div class="flow-label">Test validator</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-blue">enforce.py</div>
+        <div class="flow-label">Quality gate</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-blue">report.py</div>
+        <div class="flow-label">Report builder</div>
+      </div>
+    </div>
+
+    <hr class="flow-divider" />
+    <div class="flow-section-label">Shared Core</div>
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="flow-box fb-grey">ast_walker.py</div>
+        <div class="flow-label">AST utilities</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-grey">file_scanner.py</div>
+        <div class="flow-label">Discovery</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-grey">session.py</div>
+        <div class="flow-label">In-memory state</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-grey">logger.py</div>
+        <div class="flow-label">Structured logs</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 4. STRATEGY CONTRACT ── -->
+<section id="strategy-contract">
+  <h2><span class="section-num">04</span>Strategy Contract</h2>
+  <p>The <code class="inline">BaseStrategy</code> abstract class is the single contract every plugin must satisfy. The registry validates it at load time using Python's <code class="inline">abc</code> module. A plugin that does not implement every abstract method cannot be registered — the server raises <code class="inline">StrategyLoadError</code> before any tool call is processed.</p>
+
+<pre data-lang="python"><code><span class="cm"># strategy/base.py</span>
+<span class="kw">from</span> abc <span class="kw">import</span> <span class="tp">ABC</span>, abstractmethod
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, field
+<span class="kw">from</span> typing <span class="kw">import</span> <span class="tp">List</span>, <span class="tp">Optional</span>, <span class="tp">Dict</span>, <span class="tp">Any</span>
+<span class="kw">from</span> enum <span class="kw">import</span> <span class="tp">Enum</span>
+
+
+<span class="kw">class</span> <span class="tp">TestLaneType</span>(<span class="tp">Enum</span>):
+    UNIT        = <span class="str">"unit"</span>
+    INTEGRATION = <span class="str">"integration"</span>
+    CONTRACT    = <span class="str">"contract"</span>
+    E2E         = <span class="str">"e2e"</span>
+    PERFORMANCE = <span class="str">"performance"</span>
+
+
+@dataclass
+<span class="kw">class</span> <span class="tp">TestLane</span>:
+    lane_type:          <span class="tp">TestLaneType</span>
+    required:           bool
+    file_glob:          str          <span class="cm"># e.g. "tests/unit/**/test_*.py"</span>
+    coverage_threshold: float        <span class="cm"># 0.0–1.0; 0.0 = not measured</span>
+    max_allowed_skips:  int = <span class="num">0</span>
+
+
+@dataclass
+<span class="kw">class</span> <span class="tp">NamingConvention</span>:
+    test_file_pattern:   str  <span class="cm"># regex, e.g. r"test_(?P&lt;source&gt;.+)\.py"</span>
+    test_method_pattern: str  <span class="cm"># e.g. r"test_(?P&lt;action&gt;.+)_(?P&lt;condition&gt;.+)_(?P&lt;expected&gt;.+)"</span>
+
+
+@dataclass
+<span class="kw">class</span> <span class="tp">OracleRule</span>:
+    <span class="str">"""
+    Defines what a valid test oracle looks like for a given source class type.
+    Without this, generated tests mirror implementation bugs.
+    """</span>
+    source_class_type:      str
+    required_oracle_fields: <span class="tp">List</span>[str]   <span class="cm"># ["given", "when", "then", "expected_state"]</span>
+    required_assertions_min: int = <span class="num">1</span>
+    mutation_sensitive:     bool = <span class="kw">False</span>
+
+
+@dataclass
+<span class="kw">class</span> <span class="tp">SourceClassification</span>:
+    class_type:         str                  <span class="cm"># "service" | "utility" | "dto" | ...</span>
+    complexity_score:   int                  <span class="cm"># 1–10</span>
+    testability_issues: <span class="tp">List</span>[str]            <span class="cm"># ["hidden dependency", ...]</span>
+    required_lanes:     <span class="tp">List</span>[<span class="tp">TestLaneType</span>]
+    ast_metrics:        <span class="tp">Dict</span>[str, <span class="tp">Any</span>] = field(default_factory=dict)
+    <span class="cm"># e.g. {"functions": 12, "classes": 3, "cyclomatic_complexity": 7}</span>
+
+
+<span class="kw">class</span> <span class="tp">BaseStrategy</span>(<span class="tp">ABC</span>):
+
+    @property
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">id</span>(self) -> str:
+        <span class="str">"""Unique strategy identifier. Used in all tool calls and report headers."""</span>
+
+    @property
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">name</span>(self) -> str: ...
+
+    @property
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">version</span>(self) -> str: ...
+
+    @property
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">target_language</span>(self) -> str: ...   <span class="cm"># "python" | "kotlin" | "typescript"</span>
+
+    @property
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">target_framework</span>(self) -> <span class="tp">Optional</span>[str]: ...  <span class="cm"># nullable</span>
+
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">get_test_lanes</span>(self) -> <span class="tp">List</span>[<span class="tp">TestLane</span>]: ...
+
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">get_naming_conventions</span>(self) -> <span class="tp">NamingConvention</span>: ...
+
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">get_oracle_rules</span>(self) -> <span class="tp">List</span>[<span class="tp">OracleRule</span>]: ...
+
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">classify_source_file</span>(
+        self,
+        file_path: str,
+        content:   str,
+    ) -> <span class="tp">SourceClassification</span>:
+        <span class="str">"""
+        INVARIANT: Must be pure and synchronous. No I/O, no network calls.
+        The registry enforces this with a 2-second timeout wrapper.
+        Strategy receives raw file content; returns classification.
+        """</span>
+
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">build_generation_brief</span>(
+        self,
+        classification: <span class="tp">SourceClassification</span>,
+        user_context:   str,
+        file_path:      str,
+        test_plan:      <span class="tp">List</span>[<span class="tp">Dict</span>],
+    ) -> str:
+        <span class="str">"""
+        Returns the fully assembled prompt brief for test generation.
+        Strategy owns: oracle rules, Given/When/Then templates,
+        naming constraints, lane requirements.
+        user_context carries behavioral contracts — strategy enforces structure.
+        MCP passes this brief to the agent. MCP never builds prompts itself.
+        """</span>
+
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">validate_generated_test</span>(
+        self,
+        test_content:         str,
+        source_classification: <span class="tp">SourceClassification</span>,
+    ) -> <span class="tp">Dict</span>:
+        <span class="str">"""
+        Returns:
+        {
+          "valid": bool,
+          "violations": [
+            {"rule": str, "severity": "error"|"warning", "line": int}
+          ],
+          "oracle_completeness": float,   # 0.0–1.0
+          "lanes_covered": [TestLaneType],
+          "missing_lanes":  [TestLaneType]
+        }
+        """</span>
+</code></pre>
+
+  <div class="callout callout-warn">
+    <span class="callout-icon">⚠</span>
+    <div class="callout-body">
+      <strong>Oracle Problem</strong>
+      Tests generated from implementation alone mirror implementation bugs. <code class="inline">build_generation_brief()</code> must inject behavioral contracts — the <code class="inline">user_context</code> parameter is not optional. Strategy enforces oracle structure; user supplies expected behavior.
+    </div>
+  </div>
+</section>
+
+<!-- ── 5. STRATEGY REGISTRY ── -->
+<section id="strategy-registry">
+  <h2><span class="section-num">05</span>Strategy Registry</h2>
+  <p>The registry loads strategy plugins from a manifest file (<code class="inline">strategies.yaml</code>), validates every abstract method is implemented, and holds the active strategy for the current session in memory.</p>
+
+<pre data-lang="yaml"><code><span class="cm"># strategies.yaml</span>
+strategies:
+  - id: python_pytest_v1
+    name: <span class="str">"Python Pytest Strategy"</span>
+    version: <span class="str">"1.0.0"</span>
+    module_path: <span class="str">"strategy/plugins/python_pytest_v1.py"</span>
+    class_name: <span class="str">"PythonPytestStrategy"</span>
+    enabled: true
+
+  - id: karate_api_v1
+    name: <span class="str">"Karate API Strategy"</span>
+    version: <span class="str">"1.0.0"</span>
+    module_path: <span class="str">"strategy/plugins/karate_api_v1.py"</span>
+    class_name: <span class="str">"KarateApiStrategy"</span>
+    enabled: false  <span class="cm"># post-V1</span>
+</code></pre>
+
+<pre data-lang="python"><code><span class="cm"># strategy/registry.py</span>
+<span class="kw">import</span> importlib.util, yaml, signal
+<span class="kw">from</span> pathlib <span class="kw">import</span> <span class="tp">Path</span>
+<span class="kw">from</span> .base <span class="kw">import</span> <span class="tp">BaseStrategy</span>
+
+
+<span class="kw">class</span> <span class="tp">StrategyLoadError</span>(<span class="tp">Exception</span>): ...
+
+
+<span class="kw">class</span> <span class="tp">StrategyRegistry</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, manifest_path: str = <span class="str">"strategies.yaml"</span>):
+        self._manifest    = self._load_manifest(manifest_path)
+        self._strategies: <span class="tp">dict</span>[str, <span class="tp">BaseStrategy</span>] = {}
+        self._active:     <span class="tp">Optional</span>[<span class="tp">BaseStrategy</span>] = <span class="kw">None</span>
+
+    <span class="kw">def</span> <span class="fn">load</span>(self, strategy_id: str) -> <span class="tp">BaseStrategy</span>:
+        entry = self._find_entry(strategy_id)
+        strategy = self._import_strategy(entry)
+        self._validate_contract(strategy)        <span class="cm"># raises StrategyLoadError</span>
+        self._validate_classify_is_pure(strategy) <span class="cm"># 2-second timeout check</span>
+        self._strategies[strategy_id] = strategy
+        self._active = strategy
+        <span class="kw">return</span> strategy
+
+    <span class="kw">def</span> <span class="fn">active</span>(self) -> <span class="tp">BaseStrategy</span>:
+        <span class="kw">if not</span> self._active:
+            <span class="kw">raise</span> <span class="tp">StrategyLoadError</span>(<span class="str">"No strategy loaded. Call load_strategy first."</span>)
+        <span class="kw">return</span> self._active
+
+    <span class="kw">def</span> <span class="fn">_validate_contract</span>(self, strategy: <span class="tp">BaseStrategy</span>):
+        <span class="cm"># abc enforces abstract methods at instantiation time</span>
+        <span class="cm"># additional runtime checks here for property types</span>
+        <span class="kw">assert</span> isinstance(strategy.id,              str), <span class="str">"id must be str"</span>
+        <span class="kw">assert</span> isinstance(strategy.target_language, str), <span class="str">"target_language must be str"</span>
+        lanes = strategy.get_test_lanes()
+        <span class="kw">assert</span> len(lanes) > <span class="num">0</span>, <span class="str">"Strategy must declare at least one test lane"</span>
+        <span class="kw">assert</span> any(l.required <span class="kw">for</span> l <span class="kw">in</span> lanes), <span class="str">"At least one lane must be required"</span>
+
+    <span class="kw">def</span> <span class="fn">_validate_classify_is_pure</span>(self, strategy: <span class="tp">BaseStrategy</span>):
+        <span class="cm"># Calls classify_source_file with a no-op file under 2s timeout</span>
+        <span class="cm"># Raises StrategyLoadError if it blocks or raises unexpected exceptions</span>
+        ...
+</code></pre>
+</section>
+
+<!-- ── 6. PLUGIN SYSTEM ── -->
+<section id="plugin-system">
+  <h2><span class="section-num">06</span>Plugin System</h2>
+  <p>Each strategy plugin is a Python file containing a class that extends <code class="inline">BaseStrategy</code>. Plugins are discovered via <code class="inline">strategies.yaml</code>, loaded with <code class="inline">importlib</code>, and validated at load time. No pip installation required.</p>
+
+  <div class="plugin-grid">
+    <div class="plugin-card bundled">
+      <div class="plugin-name">python_pytest_v1</div>
+      <div class="plugin-meta">Python · pytest · V1 bundled</div>
+      <span class="plugin-tag pt-bundled">Bundled</span>
+    </div>
+    <div class="plugin-card planned">
+      <div class="plugin-name">karate_api_v1</div>
+      <div class="plugin-meta">Karate DSL · API · REST</div>
+      <span class="plugin-tag pt-planned">V2 Planned</span>
+    </div>
+    <div class="plugin-card planned">
+      <div class="plugin-name">playwright_ts_v1</div>
+      <div class="plugin-meta">TypeScript · Playwright · E2E</div>
+      <span class="plugin-tag pt-planned">V2 Planned</span>
+    </div>
+    <div class="plugin-card planned">
+      <div class="plugin-name">android_compose_v1</div>
+      <div class="plugin-meta">Kotlin · Compose · JUnit4</div>
+      <span class="plugin-tag pt-planned">V3 Planned</span>
+    </div>
+    <div class="plugin-card community">
+      <div class="plugin-name">k6_perf_v1</div>
+      <div class="plugin-meta">JavaScript · k6 · Performance</div>
+      <span class="plugin-tag pt-community">Community</span>
+    </div>
+    <div class="plugin-card community">
+      <div class="plugin-name">your_strategy</div>
+      <div class="plugin-meta">Any language · Any framework</div>
+      <span class="plugin-tag pt-community">Extensible</span>
+    </div>
+  </div>
+
+<pre data-lang="python"><code><span class="cm"># strategy/plugins/python_pytest_v1.py  (abridged)</span>
+<span class="kw">import</span> ast, re
+<span class="kw">from</span> ..base <span class="kw">import</span> BaseStrategy, TestLane, TestLaneType, NamingConvention, OracleRule, SourceClassification
+
+
+<span class="kw">class</span> <span class="tp">PythonPytestStrategy</span>(<span class="tp">BaseStrategy</span>):
+
+    @property
+    <span class="kw">def</span> <span class="fn">id</span>(self) -> str: <span class="kw">return</span> <span class="str">"python_pytest_v1"</span>
+
+    @property
+    <span class="kw">def</span> <span class="fn">name</span>(self) -> str: <span class="kw">return</span> <span class="str">"Python Pytest Strategy"</span>
+
+    @property
+    <span class="kw">def</span> <span class="fn">version</span>(self) -> str: <span class="kw">return</span> <span class="str">"1.0.0"</span>
+
+    @property
+    <span class="kw">def</span> <span class="fn">target_language</span>(self) -> str: <span class="kw">return</span> <span class="str">"python"</span>
+
+    @property
+    <span class="kw">def</span> <span class="fn">target_framework</span>(self) -> str: <span class="kw">return</span> <span class="str">"pytest"</span>
+
+    <span class="kw">def</span> <span class="fn">get_test_lanes</span>(self) -> list:
+        <span class="kw">return</span> [
+            TestLane(TestLaneType.UNIT,        required=<span class="kw">True</span>,  file_glob=<span class="str">"tests/unit/**/test_*.py"</span>,        coverage_threshold=<span class="num">0.80</span>),
+            TestLane(TestLaneType.INTEGRATION, required=<span class="kw">True</span>,  file_glob=<span class="str">"tests/integration/**/test_*.py"</span>, coverage_threshold=<span class="num">0.60</span>),
+            TestLane(TestLaneType.CONTRACT,    required=<span class="kw">False</span>, file_glob=<span class="str">"tests/contract/**/test_*.py"</span>,    coverage_threshold=<span class="num">0.0</span>),
+        ]
+
+    <span class="kw">def</span> <span class="fn">get_naming_conventions</span>(self) -> NamingConvention:
+        <span class="kw">return</span> NamingConvention(
+            test_file_pattern=<span class="str">r"test_(?P&lt;source&gt;.+)\.py"</span>,
+            test_method_pattern=<span class="str">r"test_(?P&lt;action&gt;.+)_when_(?P&lt;condition&gt;.+)_expects_(?P&lt;expected&gt;.+)"</span>,
+        )
+
+    <span class="kw">def</span> <span class="fn">get_oracle_rules</span>(self) -> list:
+        <span class="kw">return</span> [
+            OracleRule(<span class="str">"service"</span>,    required_oracle_fields=[<span class="str">"given"</span>, <span class="str">"when"</span>, <span class="str">"then"</span>, <span class="str">"expected_state"</span>], required_assertions_min=<span class="num">2</span>),
+            OracleRule(<span class="str">"repository"</span>, required_oracle_fields=[<span class="str">"given_db_state"</span>, <span class="str">"when"</span>, <span class="str">"then_db_state"</span>],  required_assertions_min=<span class="num">1</span>),
+            OracleRule(<span class="str">"utility"</span>,    required_oracle_fields=[<span class="str">"input"</span>, <span class="str">"expected_output"</span>],                  required_assertions_min=<span class="num">1</span>),
+        ]
+
+    <span class="kw">def</span> <span class="fn">classify_source_file</span>(self, file_path: str, content: str) -> SourceClassification:
+        <span class="cm"># Pure AST-based classification — no I/O</span>
+        tree = ast.parse(content)
+        metrics = self._extract_metrics(tree)
+        class_type = self._infer_class_type(file_path, tree)
+        <span class="kw">return</span> SourceClassification(
+            class_type=class_type,
+            complexity_score=min(<span class="num">10</span>, metrics[<span class="str">"avg_complexity"</span>]),
+            testability_issues=self._find_testability_issues(tree),
+            required_lanes=self._lanes_for_type(class_type),
+            ast_metrics=metrics,
+        )
+</code></pre>
+</section>
+
+<!-- ── 7. FULL FLOW ── -->
+<section id="full-flow">
+  <h2><span class="section-num">07</span>End-to-End Flow</h2>
+  <p>The full flow from agent invocation to a quality-gated report. Every step is a discrete tool call. The agent controls sequencing; QE-MCP enforces rules at each step.</p>
+
+  <div class="flow">
+    <div class="flow-section-label">Phase 1 — Setup</div>
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="flow-box fb-grey">Agent</div>
+        <div class="flow-label">Invokes tool</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-green">list_strategies</div>
+        <div class="flow-label">Discover available plugins</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-green">load_strategy</div>
+        <div class="flow-label">Validate + activate plugin</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-amber">StrategyRegistry</div>
+        <div class="flow-label">Contract check</div>
+      </div>
+    </div>
+    <div class="flow-down-arrow" style="margin-left: 0; justify-content: flex-start; padding-left: 60px;">↓ strategy loaded, session state set</div>
+
+    <hr class="flow-divider" />
+    <div class="flow-section-label">Phase 2 — Analysis</div>
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="flow-box fb-blue">analyse_repo</div>
+        <div class="flow-label">file_path + strategy_id</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-grey">FileScanner</div>
+        <div class="flow-label">Discover sources</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-grey">ASTWalker</div>
+        <div class="flow-label">Parse each file</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-purple">classify_source_file()</div>
+        <div class="flow-label">Strategy classifies</div>
+      </div>
+    </div>
+    <div class="flow-down-arrow" style="margin-left: 0; justify-content: flex-start; padding-left: 60px;">↓ gap_map: {file → {classification, missing_lanes, coverage_status}}</div>
+
+    <hr class="flow-divider" />
+    <div class="flow-section-label">Phase 3 — Planning</div>
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="flow-box fb-blue">generate_test_plan</div>
+        <div class="flow-label">file_path + user_context</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-grey">Planner</div>
+        <div class="flow-label">Classification lookup</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-purple">Oracle rules</div>
+        <div class="flow-label">from strategy</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-green">TC-001…N Plan</div>
+        <div class="flow-label">Prescriptive, Given/When/Then</div>
+      </div>
+    </div>
+    <div class="flow-down-arrow" style="margin-left: 0; justify-content: flex-start; padding-left: 60px;">↓ test_plan_id stored in session, plan JSON returned to agent</div>
+
+    <hr class="flow-divider" />
+    <div class="flow-section-label">Phase 4 — Generation (Agent-owned)</div>
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="flow-box fb-grey">Agent</div>
+        <div class="flow-label">Receives plan</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-blue">get_generation_brief</div>
+        <div class="flow-label">plan_id + file_path</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-purple">build_generation_brief()</div>
+        <div class="flow-label">Strategy assembles prompt</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-grey">Agent generates tests</div>
+        <div class="flow-label">LLM call in IDE — not in MCP</div>
+      </div>
+    </div>
+    <div class="flow-down-arrow" style="margin-left: 0; justify-content: flex-start; padding-left: 60px;">↓ agent writes test file to disk</div>
+
+    <hr class="flow-divider" />
+    <div class="flow-section-label">Phase 5 — Validation</div>
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="flow-box fb-blue">validate_tests</div>
+        <div class="flow-label">test_file + strategy_id</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-purple">validate_generated_test()</div>
+        <div class="flow-label">Strategy checks rules</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-amber">Violations list</div>
+        <div class="flow-label">error | warning | ok</div>
+      </div>
+    </div>
+    <div class="flow-down-arrow" style="margin-left: 0; justify-content: flex-start; padding-left: 60px;">↓ agent repairs violations; re-validates if errors present</div>
+
+    <hr class="flow-divider" />
+    <div class="flow-section-label">Phase 6 — Enforcement Gate</div>
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="flow-box fb-blue">enforce</div>
+        <div class="flow-label">repo_path + strategy_id</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-grey">analyse + validate</div>
+        <div class="flow-label">Full sweep</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-amber">Threshold check</div>
+        <div class="flow-label">vs. lane thresholds</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-green">passed: true</div>
+        <div class="flow-label">or</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-red">passed: false + blockers</div>
+        <div class="flow-label">Structured failure</div>
+      </div>
+    </div>
+    <div class="flow-down-arrow" style="margin-left: 0; justify-content: flex-start; padding-left: 60px;">↓ CI / agent treats passed:false as blocking</div>
+
+    <hr class="flow-divider" />
+    <div class="flow-section-label">Phase 7 — Reporting</div>
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="flow-box fb-blue">get_report</div>
+        <div class="flow-label">format: json|markdown</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-grey">ReportBuilder</div>
+        <div class="flow-label">Pydantic schema</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box fb-green">Full session report</div>
+        <div class="flow-label">gaps + violations + coverage</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 8. TOOL SURFACE ── -->
+<section id="tool-surface">
+  <h2><span class="section-num">08</span>MCP Tool Surface</h2>
+  <p>Eight tools in V1. The surface is intentionally narrow — every tool has a single responsibility and a typed return schema.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Tool</th>
+          <th>Inputs</th>
+          <th>Responsibility</th>
+          <th>Returns</th>
+          <th>V1</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">list_strategies</td>
+          <td>—</td>
+          <td>List all registered strategy IDs and metadata from manifest</td>
+          <td class="mono">[{id, name, version, language}]</td>
+          <td><span class="badge badge-v1">✓ V1</span></td>
+        </tr>
+        <tr>
+          <td class="mono">load_strategy</td>
+          <td class="mono">strategy_id: str</td>
+          <td>Validate contract + activate strategy. Raises <code class="inline">StrategyLoadError</code> on failure.</td>
+          <td class="mono">{loaded, violations, strategy_meta}</td>
+          <td><span class="badge badge-v1">✓ V1</span></td>
+        </tr>
+        <tr>
+          <td class="mono">analyse_repo</td>
+          <td class="mono">repo_path: str<br/>strategy_id: str</td>
+          <td>Discover source files, run AST parsing, classify each via strategy, produce gap map vs. declared lanes</td>
+          <td class="mono">{files_analysed, gap_map, coverage_by_lane, smells}</td>
+          <td><span class="badge badge-v1">✓ V1</span></td>
+        </tr>
+        <tr>
+          <td class="mono">generate_test_plan</td>
+          <td class="mono">file_path: str<br/>strategy_id: str<br/>user_context: str</td>
+          <td>Produce TC-001..N prescriptive plan with Given/When/Then oracles per class type. <strong>user_context is required.</strong></td>
+          <td class="mono">{plan_id, test_cases: [{id, name, given, when, then, lane, priority}]}</td>
+          <td><span class="badge badge-v1">✓ V1</span></td>
+        </tr>
+        <tr>
+          <td class="mono">get_generation_brief</td>
+          <td class="mono">plan_id: str<br/>file_path: str</td>
+          <td>Assemble full agent prompt brief via <code class="inline">build_generation_brief()</code>. MCP never calls LLMs. Returns brief for agent to act on.</td>
+          <td class="mono">{brief: str, plan_id, strategy_id, constraints}</td>
+          <td><span class="badge badge-v1">✓ V1</span></td>
+        </tr>
+        <tr>
+          <td class="mono">validate_tests</td>
+          <td class="mono">test_file: str<br/>strategy_id: str</td>
+          <td>Check generated tests against naming conventions, oracle completeness, required lane coverage</td>
+          <td class="mono">{valid, violations[{rule, severity, line}], oracle_completeness, lanes_covered, missing_lanes}</td>
+          <td><span class="badge badge-v1">✓ V1</span></td>
+        </tr>
+        <tr>
+          <td class="mono">enforce</td>
+          <td class="mono">repo_path: str<br/>strategy_id: str</td>
+          <td>Full sweep: analyse + validate + compare to thresholds. Designed to be treated as a hard gate — <code class="inline">passed:false</code> is a blocker.</td>
+          <td class="mono">{passed, blockers[{file, lane, threshold, actual}], warnings}</td>
+          <td><span class="badge badge-v1">✓ V1</span></td>
+        </tr>
+        <tr>
+          <td class="mono">get_report</td>
+          <td class="mono">format: "json"|"markdown"</td>
+          <td>Build full session report from in-memory state: all gaps, violations, enforce results, coverage by lane</td>
+          <td class="mono">QEReport (Pydantic schema)</td>
+          <td><span class="badge badge-v1">✓ V1</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-risk">
+    <span class="callout-icon">🚫</span>
+    <div class="callout-body">
+      <strong>Enforcement is Advisory by Default in MCP</strong>
+      MCP servers cannot technically force a calling agent to block on <code class="inline">passed:false</code>. Enforcement requires the agent's system prompt to declare the <code class="inline">enforce</code> tool response as a hard gate. This must be part of the agent configuration, not an assumption in the MCP.
+    </div>
+  </div>
+</section>
+
+<!-- ── 9. REPO ANALYSIS FLOW ── -->
+<section id="repo-analysis">
+  <h2><span class="section-num">09</span>Repo Analysis Flow</h2>
+  <p>Analysis is <strong>deterministic and LLM-free</strong>. It uses <code class="inline">pathlib</code> for discovery and Python's built-in <code class="inline">ast</code> module for parsing. The strategy plugin owns classification — the core only provides raw content and receives a <code class="inline">SourceClassification</code>.</p>
+
+  <h3>ASTWalker Metrics Extracted (V1)</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Metric</th><th>How Derived</th><th>Used For</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">function_count</td>
+          <td>Count <code class="inline">ast.FunctionDef</code> + <code class="inline">AsyncFunctionDef</code></td>
+          <td>Complexity score input</td>
+        </tr>
+        <tr>
+          <td class="mono">class_count</td>
+          <td>Count <code class="inline">ast.ClassDef</code></td>
+          <td>Test file pairing check</td>
+        </tr>
+        <tr>
+          <td class="mono">cyclomatic_complexity</td>
+          <td>Count <code class="inline">If | For | While | Try | ExceptHandler</code> nodes</td>
+          <td>Complexity score, lane depth</td>
+        </tr>
+        <tr>
+          <td class="mono">has_side_effects</td>
+          <td>Detect global state mutations, file I/O calls, network imports</td>
+          <td>Testability issue flag</td>
+        </tr>
+        <tr>
+          <td class="mono">public_interface</td>
+          <td>Functions/methods not prefixed with <code class="inline">_</code></td>
+          <td>Oracle scope — what needs coverage</td>
+        </tr>
+        <tr>
+          <td class="mono">decorator_patterns</td>
+          <td>Extract <code class="inline">ast.Decorator</code> names</td>
+          <td>Framework detection (pytest fixtures, FastAPI routes)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Gap Map Output</h3>
+<pre data-lang="json"><code>{
+  "files_analysed": 24,
+  "gap_map": {
+    "src/services/order_service.py": {
+      "class_type": "service",
+      "complexity_score": 8,
+      "required_lanes": ["unit", "integration"],
+      "existing_tests": ["tests/unit/test_order_service.py"],
+      "missing_lanes": ["integration"],
+      "testability_issues": ["hidden_dependency: database_session"],
+      "ast_metrics": { "function_count": 12, "cyclomatic_complexity": 31 }
+    }
+  },
+  "coverage_by_lane": {
+    "unit":        { "required": true,  "threshold": 0.80, "actual": 0.73, "status": "BREACH" },
+    "integration": { "required": true,  "threshold": 0.60, "actual": 0.40, "status": "BREACH" },
+    "contract":    { "required": false, "threshold": 0.0,  "actual": 0.0,  "status": "OK"     }
+  },
+  "smells": [
+    { "file": "src/utils/helpers.py", "smell": "dead_test_risk", "detail": "No test file found, 0 public functions" }
+  ]
+}
+</code></pre>
+
+  <div class="callout callout-info">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body">
+      <strong>V1 Scope Boundary</strong>
+      File structure + AST only. Dependency graph traversal (what imports what) and semantic analysis (what does this class do) are deferred. Adding them post-V1 does not change the tool interface — only the analysis depth.
+    </div>
+  </div>
+</section>
+
+<!-- ── 10. TEST PLAN FLOW ── -->
+<section id="test-plan">
+  <h2><span class="section-num">10</span>Test Plan Flow</h2>
+  <p>The test planner produces a prescriptive, numbered test plan per source file. The plan is not high-level guidance — it specifies named test cases with oracle fields that the agent must satisfy in the generated test.</p>
+
+  <h3>Test Plan Output Schema</h3>
+<pre data-lang="json"><code>{
+  "plan_id": "plan_20240623_order_service",
+  "strategy_id": "python_pytest_v1",
+  "source_file": "src/services/order_service.py",
+  "classification": { "class_type": "service", "complexity_score": 8 },
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "name": "create_order_when_valid_payload_expects_order_persisted",
+      "lane": "unit",
+      "priority": "P1",
+      "method_under_test": "create_order",
+      "given": "A valid order payload with product_id, quantity, and user_id",
+      "when":  "create_order() is invoked with the payload",
+      "then":  "Order is persisted with status=PENDING and a non-null order_id is returned",
+      "expected_state": { "order.status": "PENDING", "order.id": "not_null" },
+      "oracle_fields_required": ["given", "when", "then", "expected_state"],
+      "mutation_sensitive": true
+    },
+    {
+      "id": "TC-002",
+      "name": "create_order_when_product_not_found_expects_ProductNotFoundError",
+      "lane": "unit",
+      "priority": "P1",
+      "method_under_test": "create_order",
+      "given": "A payload referencing a product_id that does not exist in the catalogue",
+      "when":  "create_order() is invoked",
+      "then":  "ProductNotFoundError is raised with the offending product_id in the message",
+      "oracle_fields_required": ["given", "when", "then"],
+      "mutation_sensitive": false
+    }
+  ],
+  "coverage_targets": { "unit": 4, "integration": 2 },
+  "generation_brief_ready": true
+}
+</code></pre>
+
+  <div class="callout callout-warn">
+    <span class="callout-icon">⚠</span>
+    <div class="callout-body">
+      <strong>user_context is Mandatory</strong>
+      <code class="inline">generate_test_plan</code> requires <code class="inline">user_context</code>. If empty, the tool returns a validation error — it does not produce a plan. Tests derived from implementation alone without behavioral context will assert the wrong expected state whenever the implementation contains a bug.
+    </div>
+  </div>
+</section>
+
+<!-- ── 11. VALIDATION FLOW ── -->
+<section id="validation">
+  <h2><span class="section-num">11</span>Validation Flow</h2>
+  <p>After the agent generates and writes a test file, <code class="inline">validate_tests</code> runs the generated content through the strategy's <code class="inline">validate_generated_test()</code> method, which checks rules the strategy declares. The MCP core adds structural checks that apply to any strategy.</p>
+
+  <h3>Validation Layers</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Layer</th><th>Owner</th><th>What is Checked</th><th>On Failure</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="highlight">Syntax parse</td>
+          <td>MCP Core</td>
+          <td>File is valid Python (AST parse without error)</td>
+          <td><span class="badge badge-sev-error">error</span></td>
+        </tr>
+        <tr>
+          <td class="highlight">Naming conventions</td>
+          <td>Strategy</td>
+          <td>File name matches <code class="inline">test_file_pattern</code>; method names match <code class="inline">test_method_pattern</code></td>
+          <td><span class="badge badge-sev-warn">warning</span></td>
+        </tr>
+        <tr>
+          <td class="highlight">Oracle completeness</td>
+          <td>Strategy</td>
+          <td>Each test has all required Given/When/Then docstring fields for its class type</td>
+          <td><span class="badge badge-sev-error">error</span></td>
+        </tr>
+        <tr>
+          <td class="highlight">Assertion count</td>
+          <td>Strategy</td>
+          <td>Test method has ≥ <code class="inline">required_assertions_min</code> assert statements</td>
+          <td><span class="badge badge-sev-error">error</span></td>
+        </tr>
+        <tr>
+          <td class="highlight">Lane coverage</td>
+          <td>Strategy</td>
+          <td>Test file covers lanes declared as required for its source class type</td>
+          <td><span class="badge badge-sev-warn">warning</span></td>
+        </tr>
+        <tr>
+          <td class="highlight">No bare asserts</td>
+          <td>MCP Core</td>
+          <td>No <code class="inline">assert True</code> or <code class="inline">assert x is not None</code> as the only assertion</td>
+          <td><span class="badge badge-sev-warn">warning</span></td>
+        </tr>
+        <tr>
+          <td class="highlight">No skipped tests</td>
+          <td>MCP Core</td>
+          <td>No <code class="inline">@pytest.mark.skip</code> unless <code class="inline">max_allowed_skips</code> permits</td>
+          <td><span class="badge badge-sev-error">error</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Validation Response</h3>
+<pre data-lang="json"><code>{
+  "valid": false,
+  "oracle_completeness": 0.67,
+  "lanes_covered":  ["unit"],
+  "missing_lanes":  ["integration"],
+  "violations": [
+    {
+      "rule": "oracle_completeness",
+      "severity": "error",
+      "line": 24,
+      "detail": "TC-001: missing required oracle field 'expected_state' for class_type 'service'"
+    },
+    {
+      "rule": "naming_convention.method_pattern",
+      "severity": "warning",
+      "line": 19,
+      "detail": "test_create_order_ok does not match pattern test_<action>_when_<condition>_expects_<expected>"
+    }
+  ]
+}
+</code></pre>
+</section>
+
+<!-- ── 12. ENFORCEMENT GATE ── -->
+<section id="enforcement">
+  <h2><span class="section-num">12</span>Enforcement Gate</h2>
+  <p>The <code class="inline">enforce</code> tool is the quality gate. It runs a full sweep and compares results against the thresholds declared by the loaded strategy. A <code class="inline">passed:false</code> response is a structured blocker — the agent system prompt should treat it as mandatory before proceeding.</p>
+
+<pre data-lang="json"><code><span class="cm">// enforce() response — passed case</span>
+{
+  "passed": true,
+  "strategy_id": "python_pytest_v1",
+  "summary": {
+    "files_analysed": 24,
+    "test_files_found": 19,
+    "coverage_by_lane": {
+      "unit":        { "threshold": 0.80, "actual": 0.85, "status": "OK"     },
+      "integration": { "threshold": 0.60, "actual": 0.62, "status": "OK"     }
+    }
+  },
+  "blockers": [],
+  "warnings": [
+    { "file": "src/utils/helpers.py", "issue": "oracle_completeness below 0.9" }
+  ]
+}
+
+<span class="cm">// enforce() response — failed case</span>
+{
+  "passed": false,
+  "strategy_id": "python_pytest_v1",
+  "blockers": [
+    {
+      "type": "coverage_threshold_breach",
+      "lane": "unit",
+      "threshold": 0.80,
+      "actual": 0.73,
+      "files_missing_tests": ["src/services/order_service.py", "src/services/payment_service.py"]
+    },
+    {
+      "type": "validation_errors_present",
+      "file": "tests/unit/test_order_service.py",
+      "error_count": 2,
+      "detail": "oracle_completeness violations block generation acceptance"
+    }
+  ],
+  "warnings": []
+}
+</code></pre>
+
+  <div class="callout callout-ok">
+    <span class="callout-icon">✓</span>
+    <div class="callout-body">
+      <strong>CI Integration Pattern</strong>
+      In CI, run: <code class="inline">qe-mcp enforce --repo . --strategy python_pytest_v1 --format json</code>. Exit code 1 when <code class="inline">passed:false</code>. The structured JSON response can be parsed to annotate PRs or post to Slack without any parsing logic.
+    </div>
+  </div>
+</section>
+
+<!-- ── 13. REPORTING ── -->
+<section id="reporting">
+  <h2><span class="section-num">13</span>Reporting</h2>
+  <p>Reports are built from in-memory session state via Pydantic schemas. V1 supports JSON output. Markdown rendering is a thin wrapper added post-V1.</p>
+
+<pre data-lang="python"><code><span class="cm"># models/report.py</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> <span class="tp">BaseModel</span>
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+<span class="kw">from</span> typing <span class="kw">import</span> <span class="tp">List</span>, <span class="tp">Dict</span>, <span class="tp">Optional</span>
+
+
+<span class="kw">class</span> <span class="tp">LaneCoverageReport</span>(<span class="tp">BaseModel</span>):
+    lane:      str
+    required:  bool
+    threshold: float
+    actual:    float
+    status:    str  <span class="cm"># "OK" | "BREACH" | "NOT_MEASURED"</span>
+    files_missing: <span class="tp">List</span>[str]
+
+
+<span class="kw">class</span> <span class="tp">ViolationReport</span>(<span class="tp">BaseModel</span>):
+    file:     str
+    rule:     str
+    severity: str  <span class="cm"># "error" | "warning"</span>
+    line:     int
+    detail:   str
+
+
+<span class="kw">class</span> <span class="tp">QEReport</span>(<span class="tp">BaseModel</span>):
+    generated_at:     datetime
+    strategy_id:      str
+    strategy_version: str
+    repo_path:        str
+    enforce_passed:   <span class="tp">Optional</span>[bool]
+
+    files_analysed:   int
+    test_files_found: int
+    coverage:         <span class="tp">List</span>[<span class="tp">LaneCoverageReport</span>]
+    violations:       <span class="tp">List</span>[<span class="tp">ViolationReport</span>]
+    test_plans:       <span class="tp">List</span>[<span class="tp">Dict</span>]   <span class="cm"># all generated plans this session</span>
+    smells:           <span class="tp">List</span>[<span class="tp">Dict</span>]   <span class="cm"># testability issues found in source</span>
+    blockers:         <span class="tp">List</span>[<span class="tp">Dict</span>]   <span class="cm"># enforce blockers if run</span>
+    warnings:         <span class="tp">List</span>[<span class="tp">Dict</span>]
+</code></pre>
+</section>
+
+<!-- ── 14. LOGGING ── -->
+<section id="logging">
+  <h2><span class="section-num">14</span>Logging</h2>
+  <p>All logging uses Python's standard <code class="inline">logging</code> module with a structured formatter. In development mode, output is human-readable. In CI mode (<code class="inline">QE_MCP_LOG_FORMAT=json</code>), every log line is a JSON object for pipeline ingestion.</p>
+
+  <div class="log-levels">
+    <div class="log-entry">
+      <span class="log-level ll-debug">DEBUG</span>
+      <span class="log-msg">ast_walker: parsed src/services/order_service.py — 12 functions, complexity=31</span>
+    </div>
+    <div class="log-entry">
+      <span class="log-level ll-info">INFO</span>
+      <span class="log-msg">strategy_registry: loaded python_pytest_v1 v1.0.0 — contract validated in 12ms</span>
+    </div>
+    <div class="log-entry">
+      <span class="log-level ll-info">INFO</span>
+      <span class="log-msg">analyse_repo: 24 files scanned — 2 lane breaches, 1 smell detected</span>
+    </div>
+    <div class="log-entry">
+      <span class="log-level ll-warning">WARNING</span>
+      <span class="log-msg">validate_tests: test_order_service.py — oracle_completeness=0.67 (threshold: 0.90)</span>
+    </div>
+    <div class="log-entry">
+      <span class="log-level ll-error">ERROR</span>
+      <span class="log-msg">enforce: FAILED — unit coverage 0.73 breaches threshold 0.80 — 2 blockers</span>
+    </div>
+    <div class="log-entry">
+      <span class="log-level ll-critical">CRITICAL</span>
+      <span class="log-msg">strategy_registry: StrategyLoadError — karate_api_v1 missing abstract method: validate_generated_test</span>
+    </div>
+  </div>
+
+<pre data-lang="python"><code><span class="cm"># core/logger.py</span>
+<span class="kw">import</span> logging, json, os
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timezone
+
+
+<span class="kw">class</span> <span class="tp">StructuredFormatter</span>(logging.Formatter):
+    <span class="kw">def</span> <span class="fn">format</span>(self, record: logging.LogRecord) -> str:
+        entry = {
+            <span class="str">"ts"</span>:      datetime.now(timezone.utc).isoformat(),
+            <span class="str">"level"</span>:   record.levelname,
+            <span class="str">"module"</span>:  record.module,
+            <span class="str">"msg"</span>:     record.getMessage(),
+        }
+        <span class="kw">if</span> hasattr(record, <span class="str">"extra"</span>):
+            entry.update(record.extra)
+        <span class="kw">return</span> json.dumps(entry)
+
+
+<span class="kw">def</span> <span class="fn">get_logger</span>(name: str) -> logging.Logger:
+    logger = logging.getLogger(name)
+    handler = logging.StreamHandler()
+    fmt = os.getenv(<span class="str">"QE_MCP_LOG_FORMAT"</span>, <span class="str">"text"</span>)
+    handler.setFormatter(
+        <span class="tp">StructuredFormatter</span>() <span class="kw">if</span> fmt == <span class="str">"json"</span>
+        <span class="kw">else</span> logging.Formatter(<span class="str">"%(asctime)s [%(levelname)s] %(module)s: %(message)s"</span>)
+    )
+    logger.addHandler(handler)
+    logger.setLevel(os.getenv(<span class="str">"QE_MCP_LOG_LEVEL"</span>, <span class="str">"INFO"</span>))
+    <span class="kw">return</span> logger
+</code></pre>
+</section>
+
+<!-- ── 15. PROJECT STRUCTURE ── -->
+<section id="project-structure">
+  <h2><span class="section-num">15</span>Project Structure</h2>
+
+  <div class="tree">
+<span class="dir">qe-mcp/</span>
+├── <span class="hl">server.py</span>                          <span class="note"># MCP server entrypoint (stdio transport)</span>
+├── <span class="file">strategies.yaml</span>                    <span class="note"># Strategy manifest — IDs, paths, enabled flag</span>
+├── <span class="file">pyproject.toml</span>
+│
+├── <span class="dir">strategy/</span>
+│   ├── <span class="hl">base.py</span>                        <span class="note"># BaseStrategy ABC + all dataclasses</span>
+│   ├── <span class="hl">registry.py</span>                    <span class="note"># StrategyRegistry: load/validate/activate</span>
+│   └── <span class="dir">plugins/</span>
+│       ├── <span class="hl">python_pytest_v1.py</span>        <span class="note"># V1 bundled strategy</span>
+│       ├── <span class="file">karate_api_v1.py</span>           <span class="note"># Stub — post-V1</span>
+│       └── <span class="file">__init__.py</span>
+│
+├── <span class="dir">tools/</span>                             <span class="note"># One module per MCP tool</span>
+│   ├── <span class="file">router.py</span>                      <span class="note"># Dispatches tool name → handler</span>
+│   ├── <span class="hl">list_strategies.py</span>
+│   ├── <span class="hl">load_strategy.py</span>
+│   ├── <span class="hl">analyse_repo.py</span>
+│   ├── <span class="hl">generate_test_plan.py</span>
+│   ├── <span class="hl">get_generation_brief.py</span>
+│   ├── <span class="hl">validate_tests.py</span>
+│   ├── <span class="hl">enforce.py</span>
+│   └── <span class="hl">get_report.py</span>
+│
+├── <span class="dir">core/</span>
+│   ├── <span class="file">ast_walker.py</span>                  <span class="note"># AST traversal: metrics, smells, public interface</span>
+│   ├── <span class="file">file_scanner.py</span>                <span class="note"># pathlib-based repo discovery</span>
+│   ├── <span class="file">session.py</span>                     <span class="note"># In-memory session: plans, scan results</span>
+│   └── <span class="file">logger.py</span>                      <span class="note"># Structured logging setup</span>
+│
+├── <span class="dir">models/</span>
+│   ├── <span class="file">report.py</span>                      <span class="note"># Pydantic: QEReport, LaneCoverageReport, ViolationReport</span>
+│   └── <span class="file">plan.py</span>                        <span class="note"># Pydantic: TestPlan, TestCase</span>
+│
+└── <span class="dir">tests/</span>                             <span class="note"># QE-MCP's own test suite</span>
+    ├── <span class="file">test_registry.py</span>
+    ├── <span class="file">test_ast_walker.py</span>
+    ├── <span class="file">test_analyse_repo.py</span>
+    ├── <span class="file">test_validate_tests.py</span>
+    └── <span class="file">test_enforce.py</span>
+  </div>
+</section>
+
+<!-- ── 16. V1 SCOPE ── -->
+<section id="v1-scope">
+  <h2><span class="section-num">16</span>V1 Scope</h2>
+  <p>Two-week delivery target. Strict scope cut — nothing enters V1 that isn't required to ship a working, usable tool.</p>
+
+  <div class="sprint-grid">
+    <div class="sprint-card">
+      <div class="sprint-header" style="color: var(--accent-green); background: rgba(0,200,150,0.05);">
+        <span>Week 1 — Foundation</span>
+        <span class="badge badge-v1">Days 1–7</span>
+      </div>
+      <div class="sprint-body">
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">BaseStrategy</code> ABC + all dataclasses</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">StrategyRegistry</code>: manifest load, contract validation, timeout wrapper</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">ASTWalker</code>: 6 metrics, testability smell detection</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">FileScanner</code>: pathlib discovery, test-to-source pairing</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">python_pytest_v1</code> strategy: classify, oracle rules, naming</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">list_strategies</code> + <code class="inline">load_strategy</code> tools</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span>Structured logger + session module</div>
+      </div>
+    </div>
+
+    <div class="sprint-card">
+      <div class="sprint-header" style="color: var(--accent-blue); background: rgba(75,158,255,0.05);">
+        <span>Week 2 — Tools + Gate</span>
+        <span class="badge badge-sev-info">Days 8–14</span>
+      </div>
+      <div class="sprint-body">
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">analyse_repo</code> tool: gap map, lane breach detection</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">generate_test_plan</code> tool: TC-001..N, Given/When/Then</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">get_generation_brief</code> tool: strategy-assembled prompt brief</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">validate_tests</code> tool: 7-layer validation, violation list</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">enforce</code> tool: threshold gate, structured blockers</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">get_report</code> tool: Pydantic JSON report</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span>MCP server wiring (stdio), tool registration, error handling</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap" style="margin-top: 24px;">
+    <table>
+      <thead>
+        <tr><th>Feature</th><th>V1</th><th>Post-V1</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>BaseStrategy ABC + registry</td><td class="scope-in">✓ In</td><td>—</td></tr>
+        <tr><td>python_pytest_v1 bundled strategy</td><td class="scope-in">✓ In</td><td>—</td></tr>
+        <tr><td>AST analysis: file structure + metrics</td><td class="scope-in">✓ In</td><td>—</td></tr>
+        <tr><td>Prescriptive test plan (TC-001..N)</td><td class="scope-in">✓ In</td><td>—</td></tr>
+        <tr><td>7-layer test validation</td><td class="scope-in">✓ In</td><td>—</td></tr>
+        <tr><td>Enforcement gate (enforce tool)</td><td class="scope-in">✓ In</td><td>—</td></tr>
+        <tr><td>JSON report (Pydantic)</td><td class="scope-in">✓ In</td><td>—</td></tr>
+        <tr><td>Structured logging</td><td class="scope-in">✓ In</td><td>—</td></tr>
+        <tr><td>Dependency graph traversal</td><td class="scope-out">✗ Out</td><td>V2</td></tr>
+        <tr><td>karate_api_v1 strategy</td><td class="scope-out">✗ Out</td><td>V2</td></tr>
+        <tr><td>Markdown report renderer</td><td class="scope-out">✗ Out</td><td>V2 (trivial)</td></tr>
+        <tr><td>playwright_ts_v1 strategy</td><td class="scope-out">✗ Out</td><td>V2</td></tr>
+        <tr><td>Cross-file semantic analysis</td><td class="scope-out">✗ Out</td><td>V3</td></tr>
+        <tr><td>Mutation test integration</td><td class="scope-out">✗ Out</td><td>V3</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ── 17. EXTENSION POINTS ── -->
+<section id="extension-points">
+  <h2><span class="section-num">17</span>Extension Points</h2>
+
+  <h3>Adding a New Strategy (No Server Change Required)</h3>
+  <p>Creating a new strategy plugin requires only two steps: implement <code class="inline">BaseStrategy</code> in a new Python file, and register it in <code class="inline">strategies.yaml</code>. The server picks it up at next start.</p>
+
+<pre data-lang="python"><code><span class="cm"># strategy/plugins/karate_api_v1.py</span>
+<span class="kw">from</span> ..base <span class="kw">import</span> BaseStrategy, TestLane, TestLaneType, NamingConvention, OracleRule, SourceClassification
+
+
+<span class="kw">class</span> <span class="tp">KarateApiStrategy</span>(<span class="tp">BaseStrategy</span>):
+
+    @property
+    <span class="kw">def</span> <span class="fn">id</span>(self) -> str: <span class="kw">return</span> <span class="str">"karate_api_v1"</span>
+
+    @property
+    <span class="kw">def</span> <span class="fn">target_language</span>(self) -> str: <span class="kw">return</span> <span class="str">"karate-dsl"</span>
+
+    <span class="kw">def</span> <span class="fn">get_oracle_rules</span>(self) -> list:
+        <span class="kw">return</span> [
+            OracleRule(
+                <span class="str">"api_endpoint"</span>,
+                required_oracle_fields=[<span class="str">"given_headers"</span>, <span class="str">"when_request"</span>, <span class="str">"then_status"</span>, <span class="str">"then_schema"</span>],
+                required_assertions_min=<span class="num">2</span>,
+            )
+        ]
+
+    <span class="kw">def</span> <span class="fn">classify_source_file</span>(self, file_path: str, content: str) -> SourceClassification:
+        <span class="cm"># Karate-specific classification — .feature file patterns, tag parsing</span>
+        ...
+</code></pre>
+
+  <h3>Extending the Tool Surface Post-V1</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title" style="color: var(--accent-blue);">
+        <span class="dot" style="background: var(--accent-blue);"></span>New Tool Steps
+      </div>
+      <ul>
+        <li>Create <code class="inline">tools/your_tool.py</code> with a handler function</li>
+        <li>Register in <code class="inline">tools/router.py</code></li>
+        <li>Declare tool schema in <code class="inline">server.py</code> tool registration</li>
+        <li>Add to <code class="inline">models/report.py</code> if it produces reportable output</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color: var(--accent-purple);">
+        <span class="dot" style="background: var(--accent-purple);"></span>Natural V2 Tools
+      </div>
+      <ul>
+        <li><code class="inline">analyse_dependencies</code>: import graph, coupling score</li>
+        <li><code class="inline">diff_coverage</code>: PR-scoped gap analysis (Blast Radius integration)</li>
+        <li><code class="inline">export_report</code>: write report to file in JSON/Markdown/HTML</li>
+        <li><code class="inline">watch_repo</code>: file-change triggered re-analysis</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout callout-ok">
+    <span class="callout-icon">✓</span>
+    <div class="callout-body">
+      <strong>Invariant: Strategy Contract is Stable</strong>
+      The <code class="inline">BaseStrategy</code> ABC is versioned. Adding a new abstract method is a breaking change that requires a version bump and migration path. Any addition to the contract must be additive (optional with default) until the next major version, so existing plugins don't break silently.
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+  // Active nav highlighting on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('nav a');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === '#' + entry.target.id) {
+            link.classList.add('active');
+          }
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(section => observer.observe(section));
+</script>
+</body>
+</html>

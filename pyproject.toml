@@ -1,0 +1,23 @@
+[project]
+name = "qe-mcp"
+version = "1.0.0"
+description = "QA strategy enforcement MCP server for AI coding agents"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.0.0",
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+]
+v2 = [
+    "watchdog>=3.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.backends"
