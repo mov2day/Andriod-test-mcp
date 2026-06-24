@@ -4,7 +4,7 @@ from typing import List, Dict, Optional, Any
 
 from ..base import (
     BaseStrategy, TestLane, TestLaneType, NamingConvention,
-    OracleRule, SourceClassification,
+    BehavioralSpec, SourceClassification,
 )
 
 
@@ -81,51 +81,51 @@ class AndroidComposeStrategy(BaseStrategy):
             test_method_pattern=r"`(?P<description>.+)`",
         )
 
-    # ── Oracle Rules ────────────────────────────────────────────────
+    # ── Spec Rules ────────────────────────────────────────────────
 
-    def get_oracle_rules(self) -> List[OracleRule]:
+    def get_behavioral_specs(self) -> List[BehavioralSpec]:
         return [
-            OracleRule(
+            BehavioralSpec(
                 "viewmodel",
-                required_oracle_fields=["given", "when", "then", "expected_state"],
+                required_spec_fields=["given", "when", "then", "expected_state"],
                 required_assertions_min=2,
                 mutation_sensitive=True,
             ),
-            OracleRule(
+            BehavioralSpec(
                 "composable_screen",
-                required_oracle_fields=["given_state", "when_rendered", "then_visible", "then_not_visible"],
+                required_spec_fields=["given_state", "when_rendered", "then_visible", "then_not_visible"],
                 required_assertions_min=2,
             ),
-            OracleRule(
+            BehavioralSpec(
                 "composable_component",
-                required_oracle_fields=["given_props", "when_rendered", "then_visible"],
+                required_spec_fields=["given_props", "when_rendered", "then_visible"],
                 required_assertions_min=1,
             ),
-            OracleRule(
+            BehavioralSpec(
                 "navigation",
-                required_oracle_fields=["given_route", "when_action", "then_destination"],
+                required_spec_fields=["given_route", "when_action", "then_destination"],
                 required_assertions_min=1,
             ),
-            OracleRule(
+            BehavioralSpec(
                 "dto_mapper",
-                required_oracle_fields=["input", "expected_output"],
+                required_spec_fields=["input", "expected_output"],
                 required_assertions_min=1,
             ),
-            OracleRule(
+            BehavioralSpec(
                 "use_case",
-                required_oracle_fields=["given", "when", "then", "expected_state"],
+                required_spec_fields=["given", "when", "then", "expected_state"],
                 required_assertions_min=2,
                 mutation_sensitive=True,
             ),
-            OracleRule(
+            BehavioralSpec(
                 "reducer",
-                required_oracle_fields=["given", "when", "then", "expected_state"],
+                required_spec_fields=["given", "when", "then", "expected_state"],
                 required_assertions_min=2,
                 mutation_sensitive=True,
             ),
-            OracleRule(
+            BehavioralSpec(
                 "validator",
-                required_oracle_fields=["input", "expected_output"],
+                required_spec_fields=["input", "expected_output"],
                 required_assertions_min=1,
             ),
         ]
@@ -191,7 +191,7 @@ class AndroidComposeStrategy(BaseStrategy):
         file_path: str,
         test_plan: List[Dict],
     ) -> str:
-        oracle_rule = self._get_oracle_for_type(classification.class_type)
+        behavioral_spec = self._get_oracle_for_type(classification.class_type)
 
         brief = f"""# Android Compose Test Generation Brief
 **Strategy:** {self.name} v{self.version}
@@ -280,8 +280,17 @@ or validate a critical journey under release-build conditions?
 - `waitForIdle()` after every state-triggering action (except infinite animations).
 - One `setContent` call per test method.
 - `animationsDisabled = true` in `testOptions`.
+- **`waitUntil` timeout tiers:** 1000ms (UI transition), 3000ms (network/data), 5000ms (animation/debounce). >5000ms is a `SLOW_WAITUNTIL` smell.
 
-## Oracle Contract
+## Allure Reporting Annotations (MANDATORY)
+Every generated test class and method MUST include Allure annotations for traceability:
+- **Class level:** `@Epic("<feature area>")` and `@Feature("<screen or component>")`
+- **Method level:** `@Story("<user story or state>")` and `@Severity(SeverityLevel.<level>)`
+- **Inside test body:** Use `Allure.step("<step description>") {{ }}` blocks to wrap major actions.
+- Import from `io.qameta.allure` (`@Epic`, `@Feature`, `@Story`, `@Severity`, `@Step`, `Allure`).
+- Severity mapping: Lane 1/2 critical paths → `CRITICAL`, edge cases → `NORMAL`, Lane 3 → `CRITICAL`, Lane 4 → `BLOCKER`.
+
+## Behavioral Contract
 Each test MUST include this KDoc comment:
 ```kotlin
 /**
@@ -294,9 +303,9 @@ Each test MUST include this KDoc comment:
  * CONFIG: <config variant or "default">
  */
 ```
-A test with only a positive assertion and no negative assertion is a **partial oracle** and is REJECTED.
+A test with only a positive assertion and no negative assertion is a **partial spec** and is REJECTED.
 
-## Oracle Fingerprint Format
+## Spec Fingerprint Format
 ```
 {{screen}}|{{uiState}}|{{action}}|{{positiveAssertion}}|{{negativeAssertion}}|{{sourceOfTruth}}|{{locale}}|{{configVariant}}
 ```
@@ -323,11 +332,11 @@ Shared utils:    app/src/testFixtures/java
 
 """
 
-        if oracle_rule:
-            brief += f"\n## Oracle Fields for `{classification.class_type}`\n"
-            for field_name in oracle_rule.required_oracle_fields:
+        if behavioral_spec:
+            brief += f"\n## Spec Fields for `{classification.class_type}`\n"
+            for field_name in behavioral_spec.required_spec_fields:
                 brief += f"- **{field_name}** (required)\n"
-            brief += f"- Minimum assertions: {oracle_rule.required_assertions_min}\n"
+            brief += f"- Minimum assertions: {behavioral_spec.required_assertions_min}\n"
 
         brief += "\n## Behavioral Context (user_context)\n"
         brief += user_context if user_context else "_No context provided._"
@@ -348,15 +357,17 @@ Shared utils:    app/src/testFixtures/java
                 brief += f"- ⚠ {issue}\n"
 
         brief += "\n## Generated Test Review Checklist\n"
-        brief += """- [ ] Oracle is complete (GIVEN/WHEN/THEN/AND/SOURCE/LOCALE/CONFIG)
+        brief += """- [ ] Spec is complete (GIVEN/WHEN/THEN/AND/SOURCE/LOCALE/CONFIG)
 - [ ] Selector strategy matches policy (testTag for automation, semantic for accessibility)
 - [ ] No Thread.sleep() or delay() in test body
 - [ ] waitForIdle() present after every state-triggering action
-- [ ] waitUntil timeout uses standard tier value
+- [ ] waitUntil timeout uses standard tier value (1000/3000/5000ms)
 - [ ] Project theme composable used in every setContent {} block
 - [ ] Mutation gate Tier 1 evidence confirmed
 - [ ] Test assigned to correct lane and placed in correct source set
-- [ ] No duplicate oracle fingerprint
+- [ ] No duplicate spec fingerprint
+- [ ] Allure annotations present (@Epic, @Feature, @Story, @Severity on every test)
+- [ ] Allure.step() blocks wrap major actions inside test body
 """
 
         return brief
@@ -440,10 +451,10 @@ Shared utils:    app/src/testFixtures/java
                 "detail": "waitForIdle() must not be called when infinite animations are present. Use mainClock.autoAdvance = false + advanceTimeBy().",
             })
 
-        # --- Oracle completeness ---
-        oracle_rule = self._get_oracle_for_type(source_classification.class_type)
-        oracle_hits = 0
-        oracle_total = 0
+        # --- Spec completeness ---
+        behavioral_spec = self._get_oracle_for_type(source_classification.class_type)
+        spec_hits = 0
+        spec_total = 0
 
         # Find test functions (backtick-named Kotlin tests)
         test_func_matches = list(re.finditer(r'@Test\s+fun\s+`([^`]+)`', test_content))
@@ -459,25 +470,25 @@ Shared utils:    app/src/testFixtures/java
                 "detail": "No @Test functions found in file",
             })
 
-        if oracle_rule:
-            # Check KDoc/comments for oracle fields
+        if behavioral_spec:
+            # Check KDoc/comments for spec fields
             # Look for GIVEN/WHEN/THEN in comments above each @Test
             test_blocks = re.split(r'@Test', test_content)
             for block in test_blocks[1:]:  # skip preamble
-                oracle_total += len(oracle_rule.required_oracle_fields)
+                spec_total += len(behavioral_spec.required_spec_fields)
                 block_upper = block.upper()
-                for req_field in oracle_rule.required_oracle_fields:
+                for req_field in behavioral_spec.required_spec_fields:
                     if req_field.upper() in block_upper:
-                        oracle_hits += 1
+                        spec_hits += 1
                     else:
                         violations.append({
-                            "rule": "oracle_completeness",
+                            "rule": "spec_completeness",
                             "severity": "error",
                             "line": 0,
-                            "detail": f"Missing oracle field '{req_field}' for class_type '{source_classification.class_type}'",
+                            "detail": f"Missing spec field '{req_field}' for class_type '{source_classification.class_type}'",
                         })
 
-        oracle_completeness = oracle_hits / oracle_total if oracle_total > 0 else 0.0
+        spec_completeness = spec_hits / spec_total if spec_total > 0 else 0.0
 
         # --- Assertion count ---
         assertion_patterns = [
@@ -490,14 +501,113 @@ Shared utils:    app/src/testFixtures/java
             for pat in assertion_patterns
         )
 
-        if oracle_rule and test_func_matches:
-            min_total = oracle_rule.required_assertions_min * len(test_func_matches)
+        if behavioral_spec and test_func_matches:
+            min_total = behavioral_spec.required_assertions_min * len(test_func_matches)
             if assertion_count < min_total:
                 violations.append({
                     "rule": "assertion_count",
                     "severity": "error",
                     "line": 0,
-                    "detail": f"{assertion_count} total assertions found, minimum {min_total} expected ({oracle_rule.required_assertions_min} per test × {len(test_func_matches)} tests)",
+                    "detail": f"{assertion_count} total assertions found, minimum {min_total} expected ({behavioral_spec.required_assertions_min} per test × {len(test_func_matches)} tests)",
+                })
+
+        # --- waitUntil timeout validation ---
+        wait_until_matches = re.finditer(
+            r'waitUntil\s*\(\s*(?:timeoutMillis\s*=\s*)?(\d[\d_]*)',
+            test_content,
+        )
+        for m in wait_until_matches:
+            raw_val = m.group(1).replace("_", "")
+            try:
+                timeout_ms = int(raw_val)
+            except ValueError:
+                continue
+            standard_tiers = {1_000, 3_000, 5_000}
+            if timeout_ms > 5_000:
+                violations.append({
+                    "rule": "slow_waituntil",
+                    "severity": "warning",
+                    "line": test_content[:m.start()].count("\n") + 1,
+                    "detail": f"waitUntil timeout {timeout_ms}ms exceeds 5000ms threshold — SLOW_WAITUNTIL smell. Investigate root cause.",
+                })
+            elif timeout_ms not in standard_tiers:
+                violations.append({
+                    "rule": "non_standard_waituntil_tier",
+                    "severity": "warning",
+                    "line": test_content[:m.start()].count("\n") + 1,
+                    "detail": f"waitUntil timeout {timeout_ms}ms is not a standard tier (1000/3000/5000). Use a standard tier value.",
+                })
+
+        # Check for waitUntil without timeout
+        bare_wait_matches = re.finditer(r'waitUntil\s*\{', test_content)
+        for m in bare_wait_matches:
+            violations.append({
+                "rule": "waituntil_missing_timeout",
+                "severity": "error",
+                "line": test_content[:m.start()].count("\n") + 1,
+                "detail": "waitUntil called without explicit timeout. Always specify timeoutMillis.",
+            })
+
+        # --- Allure annotation validation ---
+        has_epic = bool(re.search(r'@Epic\s*\(', test_content))
+        has_feature = bool(re.search(r'@Feature\s*\(', test_content))
+        if not has_epic:
+            violations.append({
+                "rule": "allure_missing_epic",
+                "severity": "warning",
+                "line": 0,
+                "detail": "Missing @Epic annotation on test class. Add @Epic(\"<feature area>\") for Allure reporting.",
+            })
+        if not has_feature:
+            violations.append({
+                "rule": "allure_missing_feature",
+                "severity": "warning",
+                "line": 0,
+                "detail": "Missing @Feature annotation on test class. Add @Feature(\"<screen/component>\") for Allure reporting.",
+            })
+
+        # Check per-test @Story and @Severity
+        for m in test_func_matches:
+            # Get the block preceding this @Test for annotations
+            test_start = m.start()
+            preceding_block = test_content[max(0, test_start - 300):test_start]
+            if not re.search(r'@Story\s*\(', preceding_block):
+                violations.append({
+                    "rule": "allure_missing_story",
+                    "severity": "warning",
+                    "line": test_content[:test_start].count("\n") + 1,
+                    "detail": f"Test missing @Story annotation. Add @Story(\"<user story>\") for Allure traceability.",
+                })
+            if not re.search(r'@Severity\s*\(', preceding_block):
+                violations.append({
+                    "rule": "allure_missing_severity",
+                    "severity": "warning",
+                    "line": test_content[:test_start].count("\n") + 1,
+                    "detail": f"Test missing @Severity annotation. Add @Severity(SeverityLevel.<level>) for prioritization.",
+                })
+
+        # --- Test placement validation ---
+        placement_rules = {
+            "unit": "app/src/test/java",
+            "integration": "app/src/test/java",
+            "contract": "app/src/androidTest/java",
+            "e2e": "app/src/androidTest/java",
+            "performance": "macrobenchmark/src/androidTest/java",
+        }
+        # If we can detect the file path from the package declaration
+        package_match = re.search(r'package\s+([\w.]+)', test_content)
+        if package_match:
+            # Check if the test uses Lane 3 patterns but sits in test/ (not androidTest/)
+            is_lane3_test = bool(re.search(r'createAndroidComposeRule|@HiltAndroidTest|MockWebServer', test_content))
+            is_lane1_test = source_classification.class_type in ("viewmodel", "use_case", "reducer", "validator", "dto_mapper")
+            # Note: full path validation requires the file_path argument which
+            # validate_generated_test doesn't receive. We flag via heuristic.
+            if is_lane3_test and is_lane1_test:
+                violations.append({
+                    "rule": "test_placement_mismatch",
+                    "severity": "error",
+                    "line": 0,
+                    "detail": "Test uses Lane 3 constructs (createAndroidComposeRule/Hilt/MockWebServer) but source is classified as Lane 1 type. Place in app/src/androidTest/java.",
                 })
 
         # --- Determine lane coverage ---
@@ -520,7 +630,7 @@ Shared utils:    app/src/testFixtures/java
         return {
             "valid": not has_errors,
             "violations": violations,
-            "oracle_completeness": round(oracle_completeness, 2),
+            "spec_completeness": round(spec_completeness, 2),
             "lanes_covered": lanes_covered,
             "missing_lanes": missing,
         }
@@ -599,6 +709,15 @@ Shared utils:    app/src/testFixtures/java
         if re.search(r'SavedStateHandle', content):
             smells.append("SAVED_STATE_HANDLE_DETECTED: Must test missing-argument edge case.")
 
+        # ROOM_RACE_CONDITION_RISK: FakeRepository using real Room database
+        if re.search(r'RoomDatabase|@Database|@Dao|Room\.databaseBuilder', content):
+            smells.append(
+                "ROOM_RACE_CONDITION_RISK: File uses Room database. "
+                "Background writes may race with Compose idle. "
+                "Use in-memory list fake or add RoomTransactionIdlingResource."
+            )
+
+        # MISSING_MANIFEST is emitted at analysis time, not per-file
         # NO_CUSTOM_THEME_DETECTED is emitted at analysis time, not per-file
 
         return smells
@@ -619,8 +738,8 @@ Shared utils:    app/src/testFixtures/java
         }
         return mapping.get(class_type, [TestLaneType.UNIT])
 
-    def _get_oracle_for_type(self, class_type: str) -> Optional[OracleRule]:
-        for rule in self.get_oracle_rules():
+    def _get_oracle_for_type(self, class_type: str) -> Optional[BehavioralSpec]:
+        for rule in self.get_behavioral_specs():
             if rule.source_class_type == class_type:
                 return rule
         return None

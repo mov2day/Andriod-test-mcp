@@ -17,7 +17,7 @@ def handle_validate_tests(
     registry: StrategyRegistry,
 ) -> Dict[str, Any]:
     """
-    Check generated tests against naming conventions, oracle completeness,
+    Check generated tests against naming conventions, spec completeness,
     required lane coverage. Runs MCP Core checks + strategy-specific checks.
     """
     test_file = arguments.get("test_file", "")
@@ -74,7 +74,7 @@ def handle_validate_tests(
                             "rule": "no_bare_asserts",
                             "severity": "warning",
                             "line": node.lineno,
-                            "detail": "Bare 'assert True' is a vacuous oracle",
+                            "detail": "Bare 'assert True' is a vacuous spec",
                         })
                     if (isinstance(node.test, ast.Compare)
                         and isinstance(node.test.ops[0], ast.IsNot)
@@ -85,7 +85,7 @@ def handle_validate_tests(
                             "rule": "no_bare_asserts",
                             "severity": "warning",
                             "line": node.lineno,
-                            "detail": "'assert x is not None' as sole assertion is a weak oracle",
+                            "detail": "'assert x is not None' as sole assertion is a weak spec",
                         })
         except SyntaxError:
             pass  # Already caught above
@@ -113,6 +113,24 @@ def handle_validate_tests(
                 "detail": f"{skip_count} skipped tests exceed max_allowed_skips={max_skips}",
             })
 
+    # Layer 8: Allure reporting annotations (core check — all strategies)
+    if lang == "python":
+        if "import allure" not in test_content:
+            core_violations.append({
+                "rule": "allure_import_missing",
+                "severity": "warning",
+                "line": 0,
+                "detail": "Missing 'import allure'. Allure annotations are required for test reporting.",
+            })
+    elif lang == "kotlin":
+        if "io.qameta.allure" not in test_content:
+            core_violations.append({
+                "rule": "allure_import_missing",
+                "severity": "warning",
+                "line": 0,
+                "detail": "Missing Allure import (io.qameta.allure). Allure annotations are required for test reporting.",
+            })
+
     # ── Strategy-specific validation ─────────────────────────────
     try:
         strategy_result = strategy.validate_generated_test(test_content, source_classification)
@@ -121,7 +139,7 @@ def handle_validate_tests(
         strategy_result = {
             "valid": False,
             "violations": [{"rule": "strategy_error", "severity": "error", "line": 0, "detail": str(e)}],
-            "oracle_completeness": 0.0,
+            "spec_completeness": 0.0,
             "lanes_covered": [],
             "missing_lanes": [],
         }
@@ -133,7 +151,7 @@ def handle_validate_tests(
     result = {
         "valid": not has_errors,
         "violations": all_violations,
-        "oracle_completeness": strategy_result.get("oracle_completeness", 0.0),
+        "spec_completeness": strategy_result.get("spec_completeness", 0.0),
         "lanes_covered": strategy_result.get("lanes_covered", []),
         "missing_lanes": strategy_result.get("missing_lanes", []),
     }

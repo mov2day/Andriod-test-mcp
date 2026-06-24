@@ -19,7 +19,7 @@ class TestCase(BaseModel):
     when: str
     then: str
     expected_state: Optional[Dict] = None
-    oracle_fields_required: List[str] = Field(default_factory=list)
+    spec_fields_required: List[str] = Field(default_factory=list)
     mutation_sensitive: bool = False
 
 

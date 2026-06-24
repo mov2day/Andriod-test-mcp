@@ -80,7 +80,7 @@ def analyse_repo(repo_path: str, strategy_id: str) -> dict:
 @mcp.tool()
 def generate_test_plan(file_path: str, strategy_id: str, user_context: str) -> dict:
     """
-    Produce TC-001..N prescriptive test plan with Given/When/Then oracles
+    Produce TC-001..N prescriptive test plan with Given/When/Then behavioral specs
     per class type. user_context is required — tests derived from
     implementation alone will assert the wrong expected state.
     """
@@ -113,7 +113,7 @@ def get_generation_brief(plan_id: str, file_path: str) -> dict:
 @mcp.tool()
 def validate_tests(test_file: str, strategy_id: str) -> dict:
     """
-    Check generated tests against naming conventions, oracle completeness,
+    Check generated tests against naming conventions, spec completeness,
     required lane coverage. Runs 7-layer validation (MCP Core + Strategy).
     """
     try:

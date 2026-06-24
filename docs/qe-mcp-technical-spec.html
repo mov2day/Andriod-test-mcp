@@ -795,7 +795,7 @@
         <li>Parse import graphs or build dependency trees (V1)</li>
         <li>Perform semantic understanding of business logic</li>
         <li>Store state between MCP server restarts</li>
-        <li>Replace human oracle judgement on expected behavior</li>
+        <li>Replace human spec judgement on expected behavior</li>
       </ul>
     </div>
   </div>
@@ -812,7 +812,7 @@
       </div>
       <ul>
         <li>No QA logic is hardcoded in the MCP server core</li>
-        <li>Every classification, oracle rule, and naming convention lives in the strategy plugin</li>
+        <li>Every classification, spec rule, and naming convention lives in the strategy plugin</li>
         <li>Swapping strategy = swapping all QA knowledge</li>
       </ul>
     </div>
@@ -981,13 +981,13 @@
 
 
 @dataclass
-<span class="kw">class</span> <span class="tp">OracleRule</span>:
+<span class="kw">class</span> <span class="tp">BehavioralSpec</span>:
     <span class="str">"""
-    Defines what a valid test oracle looks like for a given source class type.
+    Defines what a valid test spec looks like for a given source class type.
     Without this, generated tests mirror implementation bugs.
     """</span>
     source_class_type:      str
-    required_oracle_fields: <span class="tp">List</span>[str]   <span class="cm"># ["given", "when", "then", "expected_state"]</span>
+    required_spec_fields: <span class="tp">List</span>[str]   <span class="cm"># ["given", "when", "then", "expected_state"]</span>
     required_assertions_min: int = <span class="num">1</span>
     mutation_sensitive:     bool = <span class="kw">False</span>
 
@@ -1032,7 +1032,7 @@
     <span class="kw">def</span> <span class="fn">get_naming_conventions</span>(self) -> <span class="tp">NamingConvention</span>: ...
 
     @abstractmethod
-    <span class="kw">def</span> <span class="fn">get_oracle_rules</span>(self) -> <span class="tp">List</span>[<span class="tp">OracleRule</span>]: ...
+    <span class="kw">def</span> <span class="fn">get_behavioral_specs</span>(self) -> <span class="tp">List</span>[<span class="tp">BehavioralSpec</span>]: ...
 
     @abstractmethod
     <span class="kw">def</span> <span class="fn">classify_source_file</span>(
@@ -1056,7 +1056,7 @@
     ) -> str:
         <span class="str">"""
         Returns the fully assembled prompt brief for test generation.
-        Strategy owns: oracle rules, Given/When/Then templates,
+        Strategy owns: spec rules, Given/When/Then templates,
         naming constraints, lane requirements.
         user_context carries behavioral contracts — strategy enforces structure.
         MCP passes this brief to the agent. MCP never builds prompts itself.
@@ -1075,7 +1075,7 @@
           "violations": [
             {"rule": str, "severity": "error"|"warning", "line": int}
           ],
-          "oracle_completeness": float,   # 0.0–1.0
+          "spec_completeness": float,   # 0.0–1.0
           "lanes_covered": [TestLaneType],
           "missing_lanes":  [TestLaneType]
         }
@@ -1085,8 +1085,8 @@
   <div class="callout callout-warn">
     <span class="callout-icon">⚠</span>
     <div class="callout-body">
-      <strong>Oracle Problem</strong>
-      Tests generated from implementation alone mirror implementation bugs. <code class="inline">build_generation_brief()</code> must inject behavioral contracts — the <code class="inline">user_context</code> parameter is not optional. Strategy enforces oracle structure; user supplies expected behavior.
+      <strong>Spec Problem</strong>
+      Tests generated from implementation alone mirror implementation bugs. <code class="inline">build_generation_brief()</code> must inject behavioral contracts — the <code class="inline">user_context</code> parameter is not optional. Strategy enforces spec structure; user supplies expected behavior.
     </div>
   </div>
 </section>
@@ -1198,7 +1198,7 @@ strategies:
 
 <pre data-lang="python"><code><span class="cm"># strategy/plugins/python_pytest_v1.py  (abridged)</span>
 <span class="kw">import</span> ast, re
-<span class="kw">from</span> ..base <span class="kw">import</span> BaseStrategy, TestLane, TestLaneType, NamingConvention, OracleRule, SourceClassification
+<span class="kw">from</span> ..base <span class="kw">import</span> BaseStrategy, TestLane, TestLaneType, NamingConvention, BehavioralSpec, SourceClassification
 
 
 <span class="kw">class</span> <span class="tp">PythonPytestStrategy</span>(<span class="tp">BaseStrategy</span>):
@@ -1231,11 +1231,11 @@ strategies:
             test_method_pattern=<span class="str">r"test_(?P&lt;action&gt;.+)_when_(?P&lt;condition&gt;.+)_expects_(?P&lt;expected&gt;.+)"</span>,
         )
 
-    <span class="kw">def</span> <span class="fn">get_oracle_rules</span>(self) -> list:
+    <span class="kw">def</span> <span class="fn">get_behavioral_specs</span>(self) -> list:
         <span class="kw">return</span> [
-            OracleRule(<span class="str">"service"</span>,    required_oracle_fields=[<span class="str">"given"</span>, <span class="str">"when"</span>, <span class="str">"then"</span>, <span class="str">"expected_state"</span>], required_assertions_min=<span class="num">2</span>),
-            OracleRule(<span class="str">"repository"</span>, required_oracle_fields=[<span class="str">"given_db_state"</span>, <span class="str">"when"</span>, <span class="str">"then_db_state"</span>],  required_assertions_min=<span class="num">1</span>),
-            OracleRule(<span class="str">"utility"</span>,    required_oracle_fields=[<span class="str">"input"</span>, <span class="str">"expected_output"</span>],                  required_assertions_min=<span class="num">1</span>),
+            BehavioralSpec(<span class="str">"service"</span>,    required_spec_fields=[<span class="str">"given"</span>, <span class="str">"when"</span>, <span class="str">"then"</span>, <span class="str">"expected_state"</span>], required_assertions_min=<span class="num">2</span>),
+            BehavioralSpec(<span class="str">"repository"</span>, required_spec_fields=[<span class="str">"given_db_state"</span>, <span class="str">"when"</span>, <span class="str">"then_db_state"</span>],  required_assertions_min=<span class="num">1</span>),
+            BehavioralSpec(<span class="str">"utility"</span>,    required_spec_fields=[<span class="str">"input"</span>, <span class="str">"expected_output"</span>],                  required_assertions_min=<span class="num">1</span>),
         ]
 
     <span class="kw">def</span> <span class="fn">classify_source_file</span>(self, file_path: str, content: str) -> SourceClassification:
@@ -1322,7 +1322,7 @@ strategies:
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-node">
-        <div class="flow-box fb-purple">Oracle rules</div>
+        <div class="flow-box fb-purple">Spec rules</div>
         <div class="flow-label">from strategy</div>
       </div>
       <div class="flow-arrow">→</div>
@@ -1470,7 +1470,7 @@ strategies:
         <tr>
           <td class="mono">generate_test_plan</td>
           <td class="mono">file_path: str<br/>strategy_id: str<br/>user_context: str</td>
-          <td>Produce TC-001..N prescriptive plan with Given/When/Then oracles per class type. <strong>user_context is required.</strong></td>
+          <td>Produce TC-001..N prescriptive plan with Given/When/Then behavioral specs per class type. <strong>user_context is required.</strong></td>
           <td class="mono">{plan_id, test_cases: [{id, name, given, when, then, lane, priority}]}</td>
           <td><span class="badge badge-v1">✓ V1</span></td>
         </tr>
@@ -1484,8 +1484,8 @@ strategies:
         <tr>
           <td class="mono">validate_tests</td>
           <td class="mono">test_file: str<br/>strategy_id: str</td>
-          <td>Check generated tests against naming conventions, oracle completeness, required lane coverage</td>
-          <td class="mono">{valid, violations[{rule, severity, line}], oracle_completeness, lanes_covered, missing_lanes}</td>
+          <td>Check generated tests against naming conventions, spec completeness, required lane coverage</td>
+          <td class="mono">{valid, violations[{rule, severity, line}], spec_completeness, lanes_covered, missing_lanes}</td>
           <td><span class="badge badge-v1">✓ V1</span></td>
         </tr>
         <tr>
@@ -1550,7 +1550,7 @@ strategies:
         <tr>
           <td class="mono">public_interface</td>
           <td>Functions/methods not prefixed with <code class="inline">_</code></td>
-          <td>Oracle scope — what needs coverage</td>
+          <td>Spec scope — what needs coverage</td>
         </tr>
         <tr>
           <td class="mono">decorator_patterns</td>
@@ -1598,7 +1598,7 @@ strategies:
 <!-- ── 10. TEST PLAN FLOW ── -->
 <section id="test-plan">
   <h2><span class="section-num">10</span>Test Plan Flow</h2>
-  <p>The test planner produces a prescriptive, numbered test plan per source file. The plan is not high-level guidance — it specifies named test cases with oracle fields that the agent must satisfy in the generated test.</p>
+  <p>The test planner produces a prescriptive, numbered test plan per source file. The plan is not high-level guidance — it specifies named test cases with spec fields that the agent must satisfy in the generated test.</p>
 
   <h3>Test Plan Output Schema</h3>
 <pre data-lang="json"><code>{
@@ -1617,7 +1617,7 @@ strategies:
       "when":  "create_order() is invoked with the payload",
       "then":  "Order is persisted with status=PENDING and a non-null order_id is returned",
       "expected_state": { "order.status": "PENDING", "order.id": "not_null" },
-      "oracle_fields_required": ["given", "when", "then", "expected_state"],
+      "spec_fields_required": ["given", "when", "then", "expected_state"],
       "mutation_sensitive": true
     },
     {
@@ -1629,7 +1629,7 @@ strategies:
       "given": "A payload referencing a product_id that does not exist in the catalogue",
       "when":  "create_order() is invoked",
       "then":  "ProductNotFoundError is raised with the offending product_id in the message",
-      "oracle_fields_required": ["given", "when", "then"],
+      "spec_fields_required": ["given", "when", "then"],
       "mutation_sensitive": false
     }
   ],
@@ -1672,7 +1672,7 @@ strategies:
           <td><span class="badge badge-sev-warn">warning</span></td>
         </tr>
         <tr>
-          <td class="highlight">Oracle completeness</td>
+          <td class="highlight">Spec completeness</td>
           <td>Strategy</td>
           <td>Each test has all required Given/When/Then docstring fields for its class type</td>
           <td><span class="badge badge-sev-error">error</span></td>
@@ -1708,15 +1708,15 @@ strategies:
   <h3>Validation Response</h3>
 <pre data-lang="json"><code>{
   "valid": false,
-  "oracle_completeness": 0.67,
+  "spec_completeness": 0.67,
   "lanes_covered":  ["unit"],
   "missing_lanes":  ["integration"],
   "violations": [
     {
-      "rule": "oracle_completeness",
+      "rule": "spec_completeness",
       "severity": "error",
       "line": 24,
-      "detail": "TC-001: missing required oracle field 'expected_state' for class_type 'service'"
+      "detail": "TC-001: missing required spec field 'expected_state' for class_type 'service'"
     },
     {
       "rule": "naming_convention.method_pattern",
@@ -1748,7 +1748,7 @@ strategies:
   },
   "blockers": [],
   "warnings": [
-    { "file": "src/utils/helpers.py", "issue": "oracle_completeness below 0.9" }
+    { "file": "src/utils/helpers.py", "issue": "spec_completeness below 0.9" }
   ]
 }
 
@@ -1768,7 +1768,7 @@ strategies:
       "type": "validation_errors_present",
       "file": "tests/unit/test_order_service.py",
       "error_count": 2,
-      "detail": "oracle_completeness violations block generation acceptance"
+      "detail": "spec_completeness violations block generation acceptance"
     }
   ],
   "warnings": []
@@ -1850,7 +1850,7 @@ strategies:
     </div>
     <div class="log-entry">
       <span class="log-level ll-warning">WARNING</span>
-      <span class="log-msg">validate_tests: test_order_service.py — oracle_completeness=0.67 (threshold: 0.90)</span>
+      <span class="log-msg">validate_tests: test_order_service.py — spec_completeness=0.67 (threshold: 0.90)</span>
     </div>
     <div class="log-entry">
       <span class="log-level ll-error">ERROR</span>
@@ -1958,7 +1958,7 @@ strategies:
         <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">StrategyRegistry</code>: manifest load, contract validation, timeout wrapper</div>
         <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">ASTWalker</code>: 6 metrics, testability smell detection</div>
         <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">FileScanner</code>: pathlib discovery, test-to-source pairing</div>
-        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">python_pytest_v1</code> strategy: classify, oracle rules, naming</div>
+        <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">python_pytest_v1</code> strategy: classify, spec rules, naming</div>
         <div class="sprint-item"><span class="sprint-check check-scope"></span><code class="inline">list_strategies</code> + <code class="inline">load_strategy</code> tools</div>
         <div class="sprint-item"><span class="sprint-check check-scope"></span>Structured logger + session module</div>
       </div>
@@ -2014,7 +2014,7 @@ strategies:
   <p>Creating a new strategy plugin requires only two steps: implement <code class="inline">BaseStrategy</code> in a new Python file, and register it in <code class="inline">strategies.yaml</code>. The server picks it up at next start.</p>
 
 <pre data-lang="python"><code><span class="cm"># strategy/plugins/karate_api_v1.py</span>
-<span class="kw">from</span> ..base <span class="kw">import</span> BaseStrategy, TestLane, TestLaneType, NamingConvention, OracleRule, SourceClassification
+<span class="kw">from</span> ..base <span class="kw">import</span> BaseStrategy, TestLane, TestLaneType, NamingConvention, BehavioralSpec, SourceClassification
 
 
 <span class="kw">class</span> <span class="tp">KarateApiStrategy</span>(<span class="tp">BaseStrategy</span>):
@@ -2025,11 +2025,11 @@ strategies:
     @property
     <span class="kw">def</span> <span class="fn">target_language</span>(self) -> str: <span class="kw">return</span> <span class="str">"karate-dsl"</span>
 
-    <span class="kw">def</span> <span class="fn">get_oracle_rules</span>(self) -> list:
+    <span class="kw">def</span> <span class="fn">get_behavioral_specs</span>(self) -> list:
         <span class="kw">return</span> [
-            OracleRule(
+            BehavioralSpec(
                 <span class="str">"api_endpoint"</span>,
-                required_oracle_fields=[<span class="str">"given_headers"</span>, <span class="str">"when_request"</span>, <span class="str">"then_status"</span>, <span class="str">"then_schema"</span>],
+                required_spec_fields=[<span class="str">"given_headers"</span>, <span class="str">"when_request"</span>, <span class="str">"then_status"</span>, <span class="str">"then_schema"</span>],
                 required_assertions_min=<span class="num">2</span>,
             )
         ]

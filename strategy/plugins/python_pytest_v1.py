@@ -5,7 +5,7 @@ from typing import List, Dict, Optional, Any
 
 from ..base import (
     BaseStrategy, TestLane, TestLaneType, NamingConvention,
-    OracleRule, SourceClassification,
+    BehavioralSpec, SourceClassification,
 )
 
 
@@ -13,7 +13,7 @@ class PythonPytestStrategy(BaseStrategy):
     """
     Bundled strategy for Python projects using pytest.
     Classifies source files using AST analysis, enforces Given/When/Then
-    oracle contracts, and validates generated tests against naming and
+    spec contracts, and validates generated tests against naming and
     coverage rules.
     """
 
@@ -68,33 +68,33 @@ class PythonPytestStrategy(BaseStrategy):
             test_method_pattern=r"test_(?P<action>.+)_when_(?P<condition>.+)_expects_(?P<expected>.+)",
         )
 
-    # ── Oracle Rules ────────────────────────────────────────────────
+    # ── Spec Rules ────────────────────────────────────────────────
 
-    def get_oracle_rules(self) -> List[OracleRule]:
+    def get_behavioral_specs(self) -> List[BehavioralSpec]:
         return [
-            OracleRule(
+            BehavioralSpec(
                 "service",
-                required_oracle_fields=["given", "when", "then", "expected_state"],
+                required_spec_fields=["given", "when", "then", "expected_state"],
                 required_assertions_min=2,
             ),
-            OracleRule(
+            BehavioralSpec(
                 "repository",
-                required_oracle_fields=["given_db_state", "when", "then_db_state"],
+                required_spec_fields=["given_db_state", "when", "then_db_state"],
                 required_assertions_min=1,
             ),
-            OracleRule(
+            BehavioralSpec(
                 "utility",
-                required_oracle_fields=["input", "expected_output"],
+                required_spec_fields=["input", "expected_output"],
                 required_assertions_min=1,
             ),
-            OracleRule(
+            BehavioralSpec(
                 "controller",
-                required_oracle_fields=["given", "when_request", "then_status", "then_body"],
+                required_spec_fields=["given", "when_request", "then_status", "then_body"],
                 required_assertions_min=2,
             ),
-            OracleRule(
+            BehavioralSpec(
                 "dto",
-                required_oracle_fields=["input", "expected_output"],
+                required_spec_fields=["input", "expected_output"],
                 required_assertions_min=1,
             ),
         ]
@@ -138,7 +138,7 @@ class PythonPytestStrategy(BaseStrategy):
         file_path: str,
         test_plan: List[Dict],
     ) -> str:
-        oracle_rule = self._get_oracle_for_type(classification.class_type)
+        behavioral_spec = self._get_oracle_for_type(classification.class_type)
         naming = self.get_naming_conventions()
         lanes = self.get_test_lanes()
 
@@ -153,15 +153,15 @@ class PythonPytestStrategy(BaseStrategy):
             f"- File pattern: `{naming.test_file_pattern}`",
             f"- Method pattern: `{naming.test_method_pattern}`",
             "",
-            "## Oracle Contract",
+            "## Behavioral Contract",
         ]
 
-        if oracle_rule:
+        if behavioral_spec:
             brief_parts.append(f"Each test for a `{classification.class_type}` must include:")
-            for field_name in oracle_rule.required_oracle_fields:
+            for field_name in behavioral_spec.required_spec_fields:
                 brief_parts.append(f"  - **{field_name}**: (required in docstring)")
             brief_parts.append(
-                f"- Minimum assertions per test: {oracle_rule.required_assertions_min}"
+                f"- Minimum assertions per test: {behavioral_spec.required_assertions_min}"
             )
         brief_parts.append("")
 
@@ -193,6 +193,15 @@ class PythonPytestStrategy(BaseStrategy):
             for issue in classification.testability_issues:
                 brief_parts.append(f"- ⚠ {issue}")
 
+        brief_parts.append("")
+        brief_parts.append("## Allure Reporting Annotations (MANDATORY)")
+        brief_parts.append("Every generated test class and method MUST include Allure annotations:")
+        brief_parts.append("- **Class level:** `@allure.epic('<feature area>')` and `@allure.feature('<module>')`")
+        brief_parts.append("- **Method level:** `@allure.story('<user story>')` and `@allure.severity(allure.severity_level.NORMAL)`")
+        brief_parts.append("- **Inside test body:** Use `with allure.step('<step description>'):` blocks for major actions.")
+        brief_parts.append("- Import `import allure` at top of test file.")
+        brief_parts.append("- Severity mapping: service/controller critical paths → CRITICAL, utility/dto → NORMAL, integration → CRITICAL.")
+
         return "\n".join(brief_parts)
 
     # ── Validation ──────────────────────────────────────────────────
@@ -212,7 +221,7 @@ class PythonPytestStrategy(BaseStrategy):
             return {
                 "valid": False,
                 "violations": [{"rule": "syntax", "severity": "error", "line": e.lineno or 0, "detail": str(e)}],
-                "oracle_completeness": 0.0,
+                "spec_completeness": 0.0,
                 "lanes_covered": [],
                 "missing_lanes": [lt.value for lt in source_classification.required_lanes],
             }
@@ -244,41 +253,41 @@ class PythonPytestStrategy(BaseStrategy):
                     "detail": f"{func.name} does not match pattern {naming.test_method_pattern}",
                 })
 
-        # Check oracle completeness via docstrings
-        oracle_rule = self._get_oracle_for_type(source_classification.class_type)
-        oracle_hits = 0
-        oracle_total = 0
-        if oracle_rule:
+        # Check spec completeness via docstrings
+        behavioral_spec = self._get_oracle_for_type(source_classification.class_type)
+        spec_hits = 0
+        spec_total = 0
+        if behavioral_spec:
             for func in test_funcs:
                 docstring = ast.get_docstring(func) or ""
-                oracle_total += len(oracle_rule.required_oracle_fields)
-                for req_field in oracle_rule.required_oracle_fields:
+                spec_total += len(behavioral_spec.required_spec_fields)
+                for req_field in behavioral_spec.required_spec_fields:
                     if req_field.lower() in docstring.lower():
-                        oracle_hits += 1
+                        spec_hits += 1
                     else:
                         violations.append({
-                            "rule": "oracle_completeness",
+                            "rule": "spec_completeness",
                             "severity": "error",
                             "line": func.lineno,
-                            "detail": f"{func.name}: missing oracle field '{req_field}' for class_type '{source_classification.class_type}'",
+                            "detail": f"{func.name}: missing spec field '{req_field}' for class_type '{source_classification.class_type}'",
                         })
 
-        oracle_completeness = oracle_hits / oracle_total if oracle_total > 0 else 0.0
+        spec_completeness = spec_hits / spec_total if spec_total > 0 else 0.0
 
         # Check assertion counts
-        if oracle_rule:
+        if behavioral_spec:
             for func in test_funcs:
                 assert_count = sum(
                     1 for node in ast.walk(func)
                     if isinstance(node, ast.Assert)
                     or (isinstance(node, ast.Call) and _is_assert_call(node))
                 )
-                if assert_count < oracle_rule.required_assertions_min:
+                if assert_count < behavioral_spec.required_assertions_min:
                     violations.append({
                         "rule": "assertion_count",
                         "severity": "error",
                         "line": func.lineno,
-                        "detail": f"{func.name}: {assert_count} assertions, minimum {oracle_rule.required_assertions_min}",
+                        "detail": f"{func.name}: {assert_count} assertions, minimum {behavioral_spec.required_assertions_min}",
                     })
 
         # Detect bare asserts
@@ -290,7 +299,7 @@ class PythonPytestStrategy(BaseStrategy):
                             "rule": "no_bare_asserts",
                             "severity": "warning",
                             "line": node.lineno,
-                            "detail": "Bare 'assert True' is a vacuous oracle",
+                            "detail": "Bare 'assert True' is a vacuous spec",
                         })
 
         # Detect skip markers
@@ -321,12 +330,65 @@ class PythonPytestStrategy(BaseStrategy):
             if lt.value not in lanes_covered
         ]
 
+        # --- Allure annotation validation ---
+        has_allure_import = "import allure" in test_content
+        if not has_allure_import:
+            violations.append({
+                "rule": "allure_missing_import",
+                "severity": "warning",
+                "line": 0,
+                "detail": "Missing 'import allure'. Add Allure import for reporting annotations.",
+            })
+
+        has_epic = bool(re.search(r'@allure\.epic\s*\(', test_content))
+        has_feature = bool(re.search(r'@allure\.feature\s*\(', test_content))
+        if not has_epic:
+            violations.append({
+                "rule": "allure_missing_epic",
+                "severity": "warning",
+                "line": 0,
+                "detail": "Missing @allure.epic() decorator on test class. Required for Allure reporting.",
+            })
+        if not has_feature:
+            violations.append({
+                "rule": "allure_missing_feature",
+                "severity": "warning",
+                "line": 0,
+                "detail": "Missing @allure.feature() decorator on test class. Required for Allure reporting.",
+            })
+
+        # Check per-function @allure.story
+        for func in test_funcs:
+            func_has_story = False
+            for decorator in func.decorator_list:
+                if (isinstance(decorator, ast.Call)
+                    and isinstance(decorator.func, ast.Attribute)
+                    and isinstance(decorator.func.value, ast.Attribute)
+                    and getattr(decorator.func.value, 'attr', '') == 'allure'
+                    or (isinstance(decorator, ast.Call)
+                        and isinstance(decorator.func, ast.Attribute)
+                        and decorator.func.attr == 'story')):
+                    func_has_story = True
+                    break
+                # Also check ast.Attribute form: allure.story(...)
+                dec_src = ast.dump(decorator)
+                if 'story' in dec_src:
+                    func_has_story = True
+                    break
+            if not func_has_story:
+                violations.append({
+                    "rule": "allure_missing_story",
+                    "severity": "warning",
+                    "line": func.lineno,
+                    "detail": f"{func.name}: missing @allure.story() decorator. Required for Allure traceability.",
+                })
+
         has_errors = any(v["severity"] == "error" for v in violations)
 
         return {
             "valid": not has_errors,
             "violations": violations,
-            "oracle_completeness": round(oracle_completeness, 2),
+            "spec_completeness": round(spec_completeness, 2),
             "lanes_covered": lanes_covered,
             "missing_lanes": missing,
         }
@@ -410,8 +472,8 @@ class PythonPytestStrategy(BaseStrategy):
         }
         return mapping.get(class_type, [TestLaneType.UNIT])
 
-    def _get_oracle_for_type(self, class_type: str) -> Optional[OracleRule]:
-        for rule in self.get_oracle_rules():
+    def _get_oracle_for_type(self, class_type: str) -> Optional[BehavioralSpec]:
+        for rule in self.get_behavioral_specs():
             if rule.source_class_type == class_type:
                 return rule
         return None

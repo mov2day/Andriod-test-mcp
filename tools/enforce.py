@@ -98,7 +98,7 @@ def handle_enforce(
                 "type": "validation_errors_present",
                 "file": val_err["file"],
                 "error_count": error_count,
-                "detail": "Oracle completeness or structural violations block acceptance",
+                "detail": "Spec completeness or structural violations block acceptance",
             })
 
         warning_count = sum(

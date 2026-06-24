@@ -94,6 +94,6 @@ def handle_get_generation_brief(
         "constraints": {
             "naming": strategy.get_naming_conventions().__dict__,
             "lanes": [lane.lane_type.value for lane in strategy.get_test_lanes() if lane.required],
-            "oracle_fields": [r.__dict__ for r in strategy.get_oracle_rules()],
+            "oracle_fields": [r.__dict__ for r in strategy.get_behavioral_specs()],
         },
     }

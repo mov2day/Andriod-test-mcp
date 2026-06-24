@@ -17,7 +17,7 @@ def handle_generate_test_plan(
     registry: StrategyRegistry,
 ) -> Dict[str, Any]:
     """
-    Produce TC-001..N prescriptive test plan with Given/When/Then oracles.
+    Produce TC-001..N prescriptive test plan with Given/When/Then behavioral specs.
     user_context is mandatory — tests derived from implementation alone
     without behavioral context will assert the wrong expected state.
     """
@@ -64,8 +64,8 @@ def handle_generate_test_plan(
     class_type = classification_data["class_type"]
     public_interface = classification_data.get("ast_metrics", {}).get("public_interface", [])
 
-    # Get oracle rules for this class type
-    oracle_rules = strategy.get_oracle_rules()
+    # Get spec rules for this class type
+    oracle_rules = strategy.get_behavioral_specs()
     matching_rule = None
     for rule in oracle_rules:
         if rule.source_class_type == class_type:
@@ -99,7 +99,7 @@ def handle_generate_test_plan(
             when=f"{method_name}() is invoked with valid input",
             then=f"Expected successful outcome per behavioral contract",
             expected_state={"status": "success"},
-            oracle_fields_required=matching_rule.required_oracle_fields if matching_rule else ["given", "when", "then"],
+            spec_fields_required=matching_rule.required_spec_fields if matching_rule else ["given", "when", "then"],
             mutation_sensitive=matching_rule.mutation_sensitive if matching_rule else False,
         ))
         tc_counter += 1
@@ -118,7 +118,7 @@ def handle_generate_test_plan(
             when=f"{method_name}() is invoked with invalid input",
             then=f"Expected error handling per behavioral contract",
             expected_state={"status": "error"},
-            oracle_fields_required=matching_rule.required_oracle_fields if matching_rule else ["given", "when", "then"],
+            spec_fields_required=matching_rule.required_spec_fields if matching_rule else ["given", "when", "then"],
             mutation_sensitive=False,
         ))
         tc_counter += 1
@@ -134,7 +134,7 @@ def handle_generate_test_plan(
             given=f"Preconditions for {class_type} — {user_context}",
             when=f"Primary action is invoked",
             then=f"Expected outcome per behavioral contract",
-            oracle_fields_required=matching_rule.required_oracle_fields if matching_rule else ["given", "when", "then"],
+            spec_fields_required=matching_rule.required_spec_fields if matching_rule else ["given", "when", "then"],
             mutation_sensitive=matching_rule.mutation_sensitive if matching_rule else False,
         ))
 

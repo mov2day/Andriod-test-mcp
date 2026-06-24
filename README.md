@@ -7,7 +7,7 @@ QE-MCP is a Python-based MCP (Model Context Protocol) server that enforces confi
 Unlike standard code generation, QE-MCP doesn't just write tests—it enforces a **prescriptive strategy**. By utilizing strategy plugins (like `python_pytest_v1` or `android_compose_v1`), it guides AI agents to:
 1. **Analyze** source code based on specific heuristics.
 2. **Determine** exactly what tests need to be written (test lanes, coverage thresholds).
-3. **Generate** prescriptive test plans using Given/When/Then oracles.
+3. **Generate** prescriptive test plans using Given/When/Then behavioral specs.
 4. **Validate** the generated test code against naming conventions, architectural boundaries, and minimum assertion counts.
 5. **Enforce** quality gates before code can be accepted.
 
@@ -16,9 +16,9 @@ Unlike standard code generation, QE-MCP doesn't just write tests—it enforces a
 ### V1 Core Tools
 *   **`list_strategies` & `load_strategy`**: Manage active testing strategies.
 *   **`analyse_repo`**: Scans the repository, pairs source files with test files, computes coverage gaps, and produces an AI-ready prompt for deep semantic analysis.
-*   **`generate_test_plan`**: Creates a prescriptive `TC-001..N` test plan for a specific file based on the strategy's oracle rules.
+*   **`generate_test_plan`**: Creates a prescriptive `TC-001..N` test plan for a specific file based on the strategy's spec rules.
 *   **`get_generation_brief`**: Assembles a comprehensive, strategy-specific prompt that instructs an AI agent exactly how to write the tests.
-*   **`validate_tests`**: Runs a 7-layer validation (Syntax, Naming, Oracle completeness, Assertions, Lane compliance, bare assert checks, and skip limits) on generated tests.
+*   **`validate_tests`**: Runs a 7-layer validation (Syntax, Naming, Spec completeness, Assertions, Lane compliance, bare assert checks, and skip limits) on generated tests.
 *   **`enforce`**: A hard quality gate that runs analysis and validation, failing if coverage thresholds or architectural rules are breached.
 *   **`get_report`**: Generates a detailed JSON or Markdown session report.
 
@@ -30,7 +30,7 @@ Unlike standard code generation, QE-MCP doesn't just write tests—it enforces a
 
 ## Built-in Strategies
 
-1.  **`python_pytest_v1`**: A Python-based strategy enforcing `pytest` best practices. It uses AST parsing to classify services, repositories, and utilities, enforcing strict oracle fields based on the component type.
+1.  **`python_pytest_v1`**: A Python-based strategy enforcing `pytest` best practices. It uses AST parsing to classify services, repositories, and utilities, enforcing strict spec fields based on the component type.
 2.  **`android_compose_v1`**: A highly advanced strategy for Android Compose projects. It enforces a 4-lane testing model (Unit, Integration, Contract, E2E) and classifies Kotlin files (ViewModels, Composables, Navigation) using heuristics, flagging testability smells like coupled ViewModels or infinite animations.
 
 ## Getting Started

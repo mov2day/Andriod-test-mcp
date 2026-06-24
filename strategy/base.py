@@ -52,11 +52,11 @@ class NamingConvention:
 
 
 @dataclass
-class OracleRule:
+class BehavioralSpec:
     """Defines what constitutes a meaningful assertion for a source class type."""
 
     source_class_type: str
-    required_oracle_fields: List[str]
+    required_spec_fields: List[str]
     required_assertions_min: int = 1
     mutation_sensitive: bool = False
 
@@ -124,8 +124,8 @@ class BaseStrategy(ABC):
         ...
 
     @abstractmethod
-    def get_oracle_rules(self) -> List[OracleRule]:
-        """Return oracle rules for assertion quality enforcement."""
+    def get_behavioral_specs(self) -> List[BehavioralSpec]:
+        """Return spec rules for assertion quality enforcement."""
         ...
 
     @abstractmethod

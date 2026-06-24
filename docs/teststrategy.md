@@ -16,7 +16,7 @@ Three principles govern the strategy.
 
 **State transition coverage takes precedence over line coverage.** A ViewModel at 85% line coverage with every sealed state exercised outperforms one at 95% line coverage missing `UiState.Error`. UI and device layers are measured by state, screen, and route coverage — not lines.
 
-**AI generation requires a contract, not prose.** ARIA consumes machine-readable manifests, lane selection rules, oracle fingerprints, testability smell outputs, mutation verification tiers, and source-set placement metadata. Every design decision in this document has a corresponding ARIA execution rule in Section 11.
+**AI generation requires a contract, not prose.** ARIA consumes machine-readable manifests, lane selection rules, spec fingerprints, testability smell outputs, mutation verification tiers, and source-set placement metadata. Every design decision in this document has a corresponding ARIA execution rule in Section 11.
 
 ---
 
@@ -274,7 +274,7 @@ ARIA tracks median and P90 test method duration per lane and recalculates shard 
 
 **DISCOVER** — Scans `@Composable` signatures, NavGraph, ViewModel sealed states, and `@Preview` annotations. Reads existing test files. Emits testability smells (Section 11.7). If no manifest is found for a screen, applies fallback rules (Section 11.2). Output: screen manifest per screen.
 
-**GENERATE** — Applies lane decision tree. Checks oracle fingerprint (including locale and configVariant) for duplicates. Produces test stubs conforming to the oracle contract.
+**GENERATE** — Applies lane decision tree. Checks spec fingerprint (including locale and configVariant) for duplicates. Produces test stubs conforming to the behavioral contract.
 
 **EXECUTE** — Mode 1 (JVM, < 90s). On pass, triggers Mode 2 for risk-flagged screens with infrastructure retry policy (Section 10.4). Mode 3a and 3b run post-merge.
 
@@ -734,7 +734,7 @@ composeTestRule.onAllNodes(hasClickAction()).assertAll(hasContentDescription() o
 **Meaningful image assertions — manifest-driven with expected text:**
 
 ```kotlin
-// WRONG: empty string is a vacuous oracle — any non-null contentDescription passes
+// WRONG: empty string is a vacuous spec — any non-null contentDescription passes
 composeTestRule.onNodeWithTag("product_image").assertContentDescriptionContains("")
 
 // CORRECT: expected text sourced from manifest accessibilityProfile.meaningfulImages
@@ -1046,7 +1046,7 @@ Standard timeout tiers prevent ad-hoc timeouts and hanging CI jobs. A test requi
 | Animation / debounce | `5_000` ms | Debounced search, complex shared element transition, slow loading indicator |
 | Smell threshold | > `5_000` ms | Testability smell — `SLOW_WAITUNTIL` emitted by ARIA; investigate the root cause |
 
-ARIA must not generate a `waitUntil` call without a timeout. ARIA must classify the timeout tier based on the operation type in the oracle and use the standard value.
+ARIA must not generate a `waitUntil` call without a timeout. ARIA must classify the timeout tier based on the operation type in the spec and use the standard value.
 
 ### 10.3 Room Off-Main-Thread Write — IdlingResource
 
@@ -1216,7 +1216,7 @@ LANE_4 when:
 
 ARIA emits a `MISSING_MANIFEST` testability smell with `ariaAction: "block_lane3_until_manifest_created"`. Lane 1 and Lane 2 generation proceeds with heuristic selector discovery, which is flagged as lower confidence in the generated test output.
 
-### 11.3 Oracle Fingerprint — Duplicate Detection
+### 11.3 Spec Fingerprint — Duplicate Detection
 
 The fingerprint includes locale and configVariant to prevent treating locale-specific tests as duplicates of each other.
 
@@ -1236,7 +1236,7 @@ The `de_DE` + `default` config test and the `de_DE` + `darkMode` config test hav
 
 `locale` defaults to `"default"` (no locale override). `configVariant` defaults to `"default"` (no config override). Both are required fields in the fingerprint even when set to `"default"`.
 
-### 11.4 Test Oracle Contract
+### 11.4 Test Behavioral Contract
 
 ```kotlin
 /**
@@ -1252,12 +1252,12 @@ The `de_DE` + `default` config test and the `de_DE` + `darkMode` config test hav
 fun `error state retry resolves to success state`() { ... }
 ```
 
-A test with only a positive assertion and no corresponding negative assertion is a partial oracle and is rejected by the acceptance gate.
+A test with only a positive assertion and no corresponding negative assertion is a partial spec and is rejected by the acceptance gate.
 
 ### 11.5 Mutation Verification — Tiered Cost Model
 
 **Tier 1 — PR Generation (cheap, mandatory):**
-Generated test must fail at least one of: replace composable content with `Box {}`, remove click callback, or remove success content branch. Failure to fail any of these = rejected, regenerate with stricter oracle.
+Generated test must fail at least one of: replace composable content with `Box {}`, remove click callback, or remove success content branch. Failure to fail any of these = rejected, regenerate with stricter spec.
 
 **Tier 2 — Nightly (full set):**
 ```
@@ -1277,7 +1277,7 @@ Mutation evidence report (which mutations ran, which failed, on which commit) is
 
 Before generating:
 1. Scan `src/test/` and `src/androidTest/` for tests targeting the same screen
-2. Compute oracle fingerprints (including locale and configVariant) from existing tests; skip on match
+2. Compute spec fingerprints (including locale and configVariant) from existing tests; skip on match
 3. Identify existing selector names; flag discrepancies against manifest `selectors`
 4. Identify existing fakes, helpers, extension functions; reuse, do not regenerate
 5. Flag ViewModel-coupled composables in existing `setContent {}` as testability smells
@@ -1371,7 +1371,7 @@ Tags must be unique across the application. The manifest `selectors` map is the 
 ### 11.9 Generated Test Review Checklist
 
 Before merging a generated test:
-- Oracle is complete (Given/When/Then/And/Source/Locale/Config)
+- Spec is complete (Given/When/Then/And/Source/Locale/Config)
 - Selector strategy matches policy (testTag for automation, semantic for accessibility)
 - No `Thread.sleep()` or `delay()` in test body
 - `waitForIdle()` present after every state-triggering action
@@ -1379,7 +1379,7 @@ Before merging a generated test:
 - Project theme composable used in every `setContent {}` block
 - Mutation gate Tier 1 evidence confirmed
 - Test is assigned to the correct lane, tagged correctly, and placed in the correct source set per `testPlacement`
-- No duplicate oracle fingerprint in the existing suite
+- No duplicate spec fingerprint in the existing suite
 - `owner` from manifest assigned in PR review
 
 ---
