@@ -1,7 +1,7 @@
 # tools/generate_test_plan.py — Produce TC-001..N prescriptive test plan
 from typing import Dict, Any, List
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from core.session import Session
 from strategy.registry import StrategyRegistry
@@ -89,17 +89,24 @@ def handle_generate_test_plan(
         tc_name = _generate_test_name(method_name, "valid_input", "success", naming.test_method_pattern)
         lane = required_lanes[0] if required_lanes else "unit"
 
+        # Build prescriptive oracle fields from user_context and spec rules
+        spec_fields = matching_rule.required_spec_fields if matching_rule else ["given", "when", "then"]
+        then_clause = (
+            f"{method_name}() returns expected result consistent with: {user_context}"
+            if user_context
+            else f"{method_name}() returns expected result per behavioral contract"
+        )
         test_cases.append(TestCase(
             id=tc_id,
             name=tc_name,
             lane=lane,
             priority="P1",
             method_under_test=method_name,
-            given=f"Valid input for {method_name} — {user_context}",
+            given=f"System is in valid state for {method_name} — {user_context}",
             when=f"{method_name}() is invoked with valid input",
-            then=f"Expected successful outcome per behavioral contract",
-            expected_state={"status": "success"},
-            spec_fields_required=matching_rule.required_spec_fields if matching_rule else ["given", "when", "then"],
+            then=then_clause,
+            expected_state={"status": "success", "verified_by": spec_fields},
+            spec_fields_required=spec_fields,
             mutation_sensitive=matching_rule.mutation_sensitive if matching_rule else False,
         ))
         tc_counter += 1
@@ -108,17 +115,18 @@ def handle_generate_test_plan(
         tc_id = f"TC-{tc_counter:03d}"
         tc_name = _generate_test_name(method_name, "invalid_input", "error", naming.test_method_pattern)
 
+        edge_spec_fields = matching_rule.required_spec_fields if matching_rule else ["given", "when", "then"]
         test_cases.append(TestCase(
             id=tc_id,
             name=tc_name,
             lane=lane,
             priority="P2",
             method_under_test=method_name,
-            given=f"Invalid or edge-case input for {method_name}",
-            when=f"{method_name}() is invoked with invalid input",
-            then=f"Expected error handling per behavioral contract",
-            expected_state={"status": "error"},
-            spec_fields_required=matching_rule.required_spec_fields if matching_rule else ["given", "when", "then"],
+            given=f"Invalid or boundary input for {method_name} — {user_context}",
+            when=f"{method_name}() is invoked with invalid/edge-case input",
+            then=f"{method_name}() raises appropriate error or returns error state",
+            expected_state={"status": "error", "verified_by": edge_spec_fields},
+            spec_fields_required=edge_spec_fields,
             mutation_sensitive=False,
         ))
         tc_counter += 1
@@ -144,12 +152,13 @@ def handle_generate_test_plan(
         coverage_targets[lane] = sum(1 for tc in test_cases if tc.lane == lane)
 
     # Create plan
-    plan_id = f"plan_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{file_path.split('/')[-1].replace('.', '_')}"
+    plan_id = f"plan_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{file_path.split('/')[-1].replace('.', '_')}"
     plan = TestPlan(
         plan_id=plan_id,
         strategy_id=strategy_id,
         source_file=file_path,
         classification={"class_type": class_type, "complexity_score": classification_data.get("complexity_score", 1)},
+        user_context=user_context,
         test_cases=test_cases,
         coverage_targets=coverage_targets,
         generation_brief_ready=True,

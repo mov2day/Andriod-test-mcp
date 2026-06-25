@@ -31,7 +31,10 @@ def handle_analyse_repo(
         return {"error": "strategy_id is required"}
 
     try:
-        strategy = registry.load(strategy_id) if not registry._active_id else registry.active()
+        if strategy_id and strategy_id != registry.active_id:
+            strategy = registry.load(strategy_id)
+        else:
+            strategy = registry.active()
     except Exception as e:
         return {"error": f"Strategy load failed: {e}"}
 
@@ -56,7 +59,15 @@ def handle_analyse_repo(
     source_files = scanner.discover_source_files(source_globs, exclude)
     test_globs = [lane.file_glob for lane in lanes]
     test_files = scanner.find_test_files(test_globs)
-    source_test_pairs = scanner.pair_source_to_test(source_files, test_files, naming.test_file_pattern)
+    # Derive replacement template from language (the naming.test_file_pattern is a
+    # regex which pair_source_to_test cannot use — it expects a {name} template).
+    if lang == "python":
+        pair_template = "test_{name}.py"
+    elif lang == "kotlin":
+        pair_template = "{name}Test.kt"
+    else:
+        pair_template = "test_{name}"
+    source_test_pairs = scanner.pair_source_to_test(source_files, test_files, pair_template)
 
     # Classify each source file
     gap_map: Dict[str, Dict] = {}
@@ -64,7 +75,7 @@ def handle_analyse_repo(
     files_requiring_analysis: List[Dict] = []
 
     for src_file in source_files:
-        src_path = Path(src_file)
+        src_path = Path(repo_path) / src_file
         try:
             content = src_path.read_text(encoding="utf-8", errors="replace")
         except Exception as e:
@@ -89,7 +100,7 @@ def handle_analyse_repo(
         existing_test_list = existing_tests if isinstance(existing_tests, list) else [existing_tests] if existing_tests else []
 
         # Determine which lanes are covered by existing tests
-        covered_lanes = _infer_covered_lanes(existing_test_list, lanes)
+        covered_lanes = _infer_covered_lanes(existing_test_list, lanes, strategy)
         missing_lanes = [
             lt.value for lt in classification.required_lanes
             if lt.value not in covered_lanes
@@ -175,21 +186,17 @@ def handle_analyse_repo(
     }
 
 
-def _infer_covered_lanes(test_files: List[str], lanes: list) -> List[str]:
-    """Heuristically determine which lanes are covered by existing test files."""
+def _infer_covered_lanes(test_files: List[str], lanes: list, strategy) -> List[str]:
+    """Determine which lanes are covered by existing test files.
+
+    Delegates to the strategy's ``infer_lane_from_test_path`` so that
+    lane-inference logic stays inside the plugin, not in the core tool.
+    """
     covered = []
     for tf in test_files:
-        tf_lower = tf.lower()
-        if "androidtest" in tf_lower:
-            covered.append("contract")  # Lane 3
-            if "journey" in tf_lower:
-                covered.append("e2e")
-        elif "benchmark" in tf_lower or "macrobenchmark" in tf_lower:
-            covered.append("performance")
-        elif "screentest" in tf_lower:
-            covered.append("integration")  # Lane 2
-        else:
-            covered.append("unit")  # Lane 1
+        lane = strategy.infer_lane_from_test_path(tf)
+        if lane:
+            covered.append(lane)
     return list(set(covered))
 
 

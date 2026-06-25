@@ -19,6 +19,7 @@ class Session:
         self.test_plans: Dict[str, Any] = {}          # keyed by plan_id
         self.validation_results: List[Dict[str, Any]] = []
         self.enforce_result: Optional[Dict[str, Any]] = None
+        self._stale: bool = False
 
     # -- mutators -----------------------------------------------------------
 
@@ -65,5 +66,5 @@ class Session:
     @property
     def is_stale(self) -> bool:
         """True if source files changed since last scan."""
-        return getattr(self, "_stale", False)
+        return self._stale
 

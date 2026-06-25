@@ -637,6 +637,19 @@ Shared utils:    app/src/testFixtures/java
 
     # ── Private Helpers ─────────────────────────────────────────────
 
+    def infer_lane_from_test_path(self, test_path: str) -> str:
+        """Infer test lane from file path using Android project conventions."""
+        tp = test_path.lower()
+        if "androidtest" in tp:
+            if "journey" in tp:
+                return "e2e"
+            return "contract"  # Lane 3
+        if "benchmark" in tp or "macrobenchmark" in tp:
+            return "performance"
+        if "screentest" in tp:
+            return "integration"  # Lane 2
+        return "unit"  # Lane 1 default
+
     def _detect_class_type(self, file_path: str, content: str) -> str:
         """Infer class type from Kotlin file content using regex heuristics."""
         path_lower = file_path.lower()
@@ -670,7 +683,7 @@ Shared utils:    app/src/testFixtures/java
             if re.search(r'@Composable\s+fun\s+\w+Screen\s*\(', content):
                 return "composable_screen"
             if re.search(r'@Composable\s+fun\s+\w+Route\s*\(', content):
-                return "composable_screen"  # Route composable
+                return "navigation"  # Route = not state-hoisted, belongs to Lane 3
             return "composable_component"
         if has_data_class and has_mapper:
             return "dto_mapper"

@@ -56,14 +56,76 @@ def handle_export_report(
 
 
 def _wrap_html(markdown_content: str) -> str:
-    """Wrap markdown content in a basic HTML template with pre-formatted text."""
-    # Simple HTML wrapper — no external markdown-to-html dependency
-    escaped = (
-        markdown_content
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    """Convert markdown content to a styled HTML report.
+
+    Uses a basic built-in renderer (headings, lists, code blocks, bold,
+    paragraphs) — no external dependency required.
+    """
+    import re as _re
+    from html import escape
+
+    lines = markdown_content.split("\n")
+    html_parts: list[str] = []
+    in_code_block = False
+    in_list = False
+
+    for line in lines:
+        # Code blocks
+        if line.strip().startswith("```"):
+            if in_code_block:
+                html_parts.append("</code></pre>")
+                in_code_block = False
+            else:
+                lang = line.strip().removeprefix("```").strip()
+                html_parts.append(f'<pre><code class="language-{escape(lang)}">' if lang else "<pre><code>")
+                in_code_block = True
+            continue
+        if in_code_block:
+            html_parts.append(escape(line))
+            continue
+
+        stripped = line.strip()
+
+        # Close open list if we're not on a list item
+        if in_list and not stripped.startswith("- ") and not stripped.startswith("* "):
+            html_parts.append("</ul>")
+            in_list = False
+
+        # Headings
+        if stripped.startswith("#"):
+            level = len(stripped) - len(stripped.lstrip("#"))
+            level = min(level, 6)
+            text = escape(stripped.lstrip("# ").strip())
+            html_parts.append(f"<h{level}>{text}</h{level}>")
+            continue
+
+        # List items
+        if stripped.startswith("- ") or stripped.startswith("* "):
+            if not in_list:
+                html_parts.append("<ul>")
+                in_list = True
+            item_text = escape(stripped[2:].strip())
+            # Bold markers
+            item_text = _re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", item_text)
+            html_parts.append(f"<li>{item_text}</li>")
+            continue
+
+        # Empty line
+        if not stripped:
+            continue
+
+        # Paragraph — apply inline formatting
+        text = escape(stripped)
+        text = _re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+        text = _re.sub(r"`(.+?)`", r"<code>\1</code>", text)
+        html_parts.append(f"<p>{text}</p>")
+
+    if in_list:
+        html_parts.append("</ul>")
+    if in_code_block:
+        html_parts.append("</code></pre>")
+
+    body = "\n".join(html_parts)
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -80,15 +142,27 @@ def _wrap_html(markdown_content: str) -> str:
     color: #e6edf3;
     line-height: 1.6;
   }}
+  h1, h2, h3, h4 {{ color: #f0f6fc; margin-top: 24px; }}
+  h1 {{ border-bottom: 1px solid #30363d; padding-bottom: 8px; }}
   pre {{
     background: #161b22;
     border: 1px solid #30363d;
     border-radius: 6px;
     padding: 16px;
     overflow-x: auto;
-    white-space: pre-wrap;
-    word-wrap: break-word;
   }}
+  code {{
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 13px;
+  }}
+  p code {{
+    background: rgba(110,118,129,0.2);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }}
+  ul {{ padding-left: 24px; }}
+  li {{ margin: 4px 0; }}
+  strong {{ color: #f0f6fc; }}
   table {{
     border-collapse: collapse;
     width: 100%;
@@ -103,6 +177,6 @@ def _wrap_html(markdown_content: str) -> str:
 </style>
 </head>
 <body>
-<pre>{escaped}</pre>
+{body}
 </body>
 </html>"""

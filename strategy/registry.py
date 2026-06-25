@@ -87,6 +87,11 @@ class StrategyRegistry:
             raise StrategyLoadError("No active strategy — call load() first")
         return self._strategies[self._active_id]
 
+    @property
+    def active_id(self) -> str | None:
+        """Return the currently active strategy ID, or ``None``."""
+        return self._active_id
+
     def list_strategies(self) -> List[Dict[str, Any]]:
         """Return summary dicts for every strategy declared in the manifest."""
         results: List[Dict[str, Any]] = []

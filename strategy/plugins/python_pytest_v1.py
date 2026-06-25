@@ -317,14 +317,14 @@ class PythonPytestStrategy(BaseStrategy):
                 "detail": f"{skip_count} skipped tests exceed max_allowed_skips={max_skips}",
             })
 
-        # Determine lane coverage (heuristic based on file path hints in content)
-        content_lower = test_content.lower()
-        if "unit" in content_lower or "unittest" in content_lower:
-            lanes_covered.append("unit")
-        if "integration" in content_lower or "fixture" in content_lower:
+        # Determine lane coverage from test file path, not content heuristics
+        path_lower = test_file_path.lower()
+        if "/integration/" in path_lower or "_integration" in path_lower:
             lanes_covered.append("integration")
-        if not lanes_covered and test_funcs:
-            lanes_covered.append("unit")  # default
+        elif "/contract/" in path_lower or "_contract" in path_lower:
+            lanes_covered.append("contract")
+        elif test_funcs:
+            lanes_covered.append("unit")  # default lane for test files
 
         missing = [
             lt.value for lt in source_classification.required_lanes
@@ -360,23 +360,7 @@ class PythonPytestStrategy(BaseStrategy):
 
         # Check per-function @allure.story
         for func in test_funcs:
-            func_has_story = False
-            for decorator in func.decorator_list:
-                if (isinstance(decorator, ast.Call)
-                    and isinstance(decorator.func, ast.Attribute)
-                    and isinstance(decorator.func.value, ast.Attribute)
-                    and getattr(decorator.func.value, 'attr', '') == 'allure'
-                    or (isinstance(decorator, ast.Call)
-                        and isinstance(decorator.func, ast.Attribute)
-                        and decorator.func.attr == 'story')):
-                    func_has_story = True
-                    break
-                # Also check ast.Attribute form: allure.story(...)
-                dec_src = ast.dump(decorator)
-                if 'story' in dec_src:
-                    func_has_story = True
-                    break
-            if not func_has_story:
+            if not _has_allure_decorator(func, "story"):
                 violations.append({
                     "rule": "allure_missing_story",
                     "severity": "warning",
@@ -473,6 +457,15 @@ class PythonPytestStrategy(BaseStrategy):
         }
         return mapping.get(class_type, [TestLaneType.UNIT])
 
+    def infer_lane_from_test_path(self, test_path: str) -> str:
+        """Infer test lane from file path using pytest directory conventions."""
+        tp = test_path.lower()
+        if "/integration/" in tp or "_integration" in tp:
+            return "integration"
+        if "/contract/" in tp or "_contract" in tp:
+            return "contract"
+        return "unit"
+
     def _get_oracle_for_type(self, class_type: str) -> Optional[BehavioralSpec]:
         for rule in self.get_behavioral_specs():
             if rule.source_class_type == class_type:
@@ -497,4 +490,22 @@ def _is_side_effect_call(node: ast.Call) -> bool:
         return node.func.attr in ("write", "send", "post", "put", "delete", "execute", "commit")
     if isinstance(node.func, ast.Name):
         return node.func.id in ("open", "print", "exec", "eval")
+    return False
+
+def _has_allure_decorator(func_node, attr_name: str) -> bool:
+    """Check if a function has an @allure.<attr_name>() decorator via clean AST inspection."""
+    for dec in func_node.decorator_list:
+        # Handle @allure.story(...) form — ast.Call wrapping ast.Attribute
+        if isinstance(dec, ast.Call) and isinstance(dec.func, ast.Attribute):
+            if dec.func.attr == attr_name:
+                # Check that the object is 'allure' (either ast.Name or ast.Attribute)
+                value = dec.func.value
+                if isinstance(value, ast.Name) and value.id == "allure":
+                    return True
+                if isinstance(value, ast.Attribute) and value.attr == "allure":
+                    return True
+        # Handle bare @allure.story (no call) — ast.Attribute
+        if isinstance(dec, ast.Attribute) and dec.attr == attr_name:
+            if isinstance(dec.value, ast.Name) and dec.value.id == "allure":
+                return True
     return False

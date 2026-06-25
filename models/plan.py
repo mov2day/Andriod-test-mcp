@@ -30,6 +30,7 @@ class TestPlan(BaseModel):
     strategy_id: str
     source_file: str
     classification: Dict
+    user_context: str = ""
     test_cases: List[TestCase] = Field(default_factory=list)
     coverage_targets: Dict[str, int] = Field(default_factory=dict)
     generation_brief_ready: bool = False

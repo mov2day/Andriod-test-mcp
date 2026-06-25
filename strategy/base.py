@@ -119,8 +119,8 @@ class BaseStrategy(ABC):
         ...
 
     @abstractmethod
-    def get_naming_conventions(self) -> List[NamingConvention]:
-        """Return naming conventions for test files and methods."""
+    def get_naming_conventions(self) -> NamingConvention:
+        """Return the naming convention for this strategy."""
         ...
 
     @abstractmethod
@@ -141,11 +141,20 @@ class BaseStrategy(ABC):
     def build_generation_brief(
         self,
         classification: SourceClassification,
-        user_context: Dict[str, Any],
+        user_context: str,
         file_path: str,
         test_plan: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+    ) -> str:
         """Build a generation brief suitable for an LLM test-writer."""
+        ...
+
+    @abstractmethod
+    def infer_lane_from_test_path(self, test_path: str) -> str:
+        """Infer which test lane a test file belongs to based on its path.
+
+        Each strategy owns the mapping from file-system conventions to
+        lane names (e.g. ``unit``, ``integration``, ``contract``).
+        """
         ...
 
     @abstractmethod

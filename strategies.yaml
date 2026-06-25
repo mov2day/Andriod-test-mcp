@@ -13,10 +13,3 @@ strategies:
     module_path: "strategy/plugins/android_compose_v1.py"
     class_name: "AndroidComposeStrategy"
     enabled: true
-
-  - id: karate_api_v1
-    name: "Karate API Strategy"
-    version: "1.0.0"
-    module_path: "strategy/plugins/karate_api_v1.py"
-    class_name: "KarateApiStrategy"
-    enabled: false

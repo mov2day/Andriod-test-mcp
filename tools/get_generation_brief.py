@@ -70,12 +70,9 @@ def handle_get_generation_brief(
             ast_metrics=classification_data.get("ast_metrics", {}),
         )
 
-    # Get user_context from the plan's test cases
-    user_context = ""
+    # Get user_context directly from the stored plan field
+    user_context = plan_data.get("user_context", "")
     test_cases = plan_data.get("test_cases", [])
-    if test_cases:
-        first_given = test_cases[0].get("given", "")
-        user_context = first_given
 
     # Build brief via strategy
     brief = strategy.build_generation_brief(
